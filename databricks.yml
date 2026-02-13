@@ -1,0 +1,43 @@
+bundle:
+  name: "rag-llmops-demo"
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog_name:
+    description: "UC catalog for this project"
+    default: "shidong_catalog"
+
+  schema_name:
+    description: "UC schema for this project"
+    default: "corporate_affairs"
+
+  model_name:
+    description: "Name of the registered model"
+    default: "corporate_affairs_chatbot"
+
+  vector_search_endpoint:
+    description: "Vector search endpoint name"
+    default: "corporate_affairs_vs_endpoint"
+
+  experiment_name:
+    description: "MLflow experiment name"
+    default: "/Users/${workspace.current_user.userName}/${bundle.target}_${var.model_name}"
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-984752964297111.11.azuredatabricks.net  # Update with your workspace URL
+    variables:
+      schema_name: "corporate_affairs_dev"
+
+  prod:
+    mode: production
+    workspace:
+      host: https://adb-984752964297111.11.azuredatabricks.net  # Update with your workspace URL
+    variables:
+      catalog_name: "prod"
+      schema_name: "corporate_affairs_prod"

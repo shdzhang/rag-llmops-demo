@@ -1,0 +1,106 @@
+# RAG LLMOps Demo
+
+End-to-end LLMOps demonstration for a RAG chatbot agent on Databricks, showcasing the complete lifecycle from data preparation through production monitoring.
+
+## Key Features
+
+| Feature | Implementation |
+|---------|---------------|
+| **Agent Framework** | MLflow 3.x `ResponsesAgent` |
+| **Prompt Management** | MLflow Prompt Registry with versioning and aliases |
+| **Retrieval** | Databricks Vector Search with `VectorSearchRetrieverTool` |
+| **Evaluation** | `mlflow.genai.evaluate()` with built-in scorers |
+| **Deployment** | `databricks.agents.deploy()` with AI Gateway |
+| **OBO Auth** | Databricks Apps with `x-forwarded-access-token` |
+| **Monitoring** | AI Gateway Inference Tables + Lakehouse Monitor |
+| **Orchestration** | Databricks Asset Bundles (DABs) |
+
+## Project Structure
+
+```
+rag-llmops-demo/
+├── agent/                          # Agent source code (logged to MLflow)
+│   ├── rag_agent.py                # ResponsesAgent with Prompt Registry + VS
+│   └── config.py                   # Shared configuration constants
+├── notebooks/                      # Databricks notebooks (run sequentially)
+│   ├── 01_data_ingestion.py        # Ingest documents to Delta
+│   ├── 02_vector_index_creation.py # Create Vector Search index
+│   ├── 03_prompt_engineering.py    # Register prompts in MLflow Prompt Registry
+│   ├── 04_agent_build.py           # Log ResponsesAgent to MLflow + UC
+│   ├── 05_agent_evaluation.py      # Evaluate with mlflow.genai.evaluate()
+│   ├── 06_model_registration.py    # Model governance (aliases, tags)
+│   ├── 07_endpoint_deployment.py   # Deploy with agents.deploy() + OBO
+│   ├── 08_inference_testing.py     # Endpoint testing & latency benchmarks
+│   └── 09_monitoring_dashboard.py  # Production monitoring queries
+├── resources/                      # DAB resource definitions
+│   ├── model_artifacts.yml         # UC model, experiment, schema
+│   ├── data_preparation.job.yml    # Data pipeline job
+│   ├── build_evaluate.job.yml      # Build + evaluate pipeline job
+│   ├── deploy.job.yml              # Deployment job
+│   └── monitoring.job.yml          # Scheduled monitoring job
+├── docs/                           # Documentation
+│   ├── architecture.md             # Architecture overview
+│   └── obo_setup_guide.md          # OBO setup instructions
+├── tests/                          # Local tests
+│   └── test_agent_local.py         # Agent validation (run on cluster)
+├── databricks.yml                  # DAB bundle configuration
+├── pyproject.toml                  # Python dependencies (uv, MLflow 3.x)
+└── README.md                       # This file
+```
+
+## Quick Start
+
+### Prerequisites
+
+- Databricks workspace with Unity Catalog enabled
+- Databricks CLI configured (`databricks auth login`)
+- Python 3.10+
+
+### 1. Configure
+
+Edit `databricks.yml` to set your workspace URL, then update `agent/config.py` with your catalog/schema names.
+
+### 2. Deploy Infrastructure
+
+```bash
+databricks bundle deploy -t dev
+```
+
+### 3. Run the Pipeline
+
+```bash
+# Data preparation
+databricks bundle run data_preparation -t dev
+
+# Build, evaluate, and deploy
+databricks bundle run build_evaluate -t dev
+databricks bundle run deploy_agent -t dev
+```
+
+### 4. Monitor
+
+```bash
+databricks bundle run monitoring -t dev
+```
+
+## LLMOps Lifecycle
+
+```
+Data Prep -> Prompt Registry -> Agent Build -> Evaluate -> Deploy -> Test -> Monitor
+  (01, 02)      (03)              (04)         (05, 06)    (07)     (08)    (09)
+```
+
+1. **Data Preparation**: Ingest docs, create Vector Search index
+2. **Prompt Engineering**: Register versioned prompts, set `@production` alias
+3. **Agent Build**: Log ResponsesAgent with resources to MLflow + UC
+4. **Evaluation**: Run `mlflow.genai.evaluate()`, enforce quality gates
+5. **Deployment**: `agents.deploy()` with AI Gateway + Review App
+6. **Monitoring**: Query inference tables, track latency/errors/costs
+
+## Technologies
+
+- **MLflow 3.x**: ResponsesAgent, Prompt Registry, GenAI Evaluate, Tracing
+- **Databricks Foundation Models**: Claude Sonnet 4.5 via AI Gateway
+- **Databricks Vector Search**: Managed embedding + retrieval
+- **Unity Catalog**: Model registry, governance, permissions
+- **Databricks Asset Bundles**: Infrastructure as Code

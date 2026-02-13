@@ -1,0 +1,20 @@
+resources:
+  registered_models:
+    corporate_chatbot:
+      name: ${var.model_name}
+      catalog_name: ${var.catalog_name}
+      schema_name: ${var.schema_name}
+      comment: "Corporate Affairs RAG Chatbot - ResponsesAgent with OBO and Prompt Registry"
+      grants:
+        - privileges:
+            - EXECUTE
+          principal: account users
+
+  experiments:
+    experiment:
+      name: ${var.experiment_name}
+
+  schemas:
+    corporate_schema:
+      name: ${var.schema_name}
+      catalog_name: ${var.catalog_name}
