@@ -38,22 +38,25 @@ print(f"Managing model: {UC_MODEL_NAME}")
 # COMMAND ----------
 
 # List all versions
-from mlflow.entities.model_registry import ModelVersionTag
-
 model = client.get_registered_model(UC_MODEL_NAME)
 print(f"Model: {model.name}")
 print(f"Description: {model.description or '(none)'}")
 
-# Show aliases
+# Show aliases (UC client returns aliases as dict: {"alias_name": "version_number"})
 print(f"\nAliases:")
-for alias in model.aliases:
-    print(f"  @{alias.alias} -> version {alias.version}")
+aliases = model.aliases or {}
+if isinstance(aliases, dict):
+    for alias_name, version in aliases.items():
+        print(f"  @{alias_name} -> version {version}")
+else:
+    for alias in aliases:
+        print(f"  {alias}")
 
 # List recent versions
 print(f"\nRecent versions:")
 versions = client.search_model_versions(f"name='{UC_MODEL_NAME}'")
 for v in sorted(versions, key=lambda x: int(x.version), reverse=True)[:5]:
-    tags = {t.key: t.value for t in (v.tags or [])}
+    tags = v.tags if isinstance(v.tags, dict) else {}
     print(f"  v{v.version}: status={v.status}, tags={tags}")
 
 # COMMAND ----------

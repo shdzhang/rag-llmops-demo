@@ -80,22 +80,30 @@ print(f"Enabled Change Data Feed on {SOURCE_TABLE}")
 
 # COMMAND ----------
 
+index_exists = False
 try:
     index = vsc.get_index(endpoint_name=VS_ENDPOINT_NAME, index_name=INDEX_NAME)
-    print(f"Index '{INDEX_NAME}' already exists")
-except Exception:
-    print(f"Creating index '{INDEX_NAME}'...")
-    vsc.create_delta_sync_index(
-        endpoint_name=VS_ENDPOINT_NAME,
-        index_name=INDEX_NAME,
-        source_table_name=SOURCE_TABLE,
-        primary_key="chunk_id",
-        pipeline_type="TRIGGERED",
-        embedding_source_column="content",
-        embedding_model_endpoint_name=EMBEDDING_MODEL,
-        columns_to_sync=["content", "source_file", "department", "chunk_index"],
-    )
-    print("Index creation initiated. This may take 5-15 minutes.")
+    index_exists = True
+    print(f"Index '{INDEX_NAME}' already exists - triggering sync to pick up any data changes")
+    index.sync()
+    print("Sync triggered.")
+except Exception as e:
+    if index_exists:
+        # Index exists but sync failed (e.g., already syncing) -- that's fine
+        print(f"  Sync skipped (may already be in progress): {e}")
+    else:
+        print(f"Creating index '{INDEX_NAME}'...")
+        vsc.create_delta_sync_index(
+            endpoint_name=VS_ENDPOINT_NAME,
+            index_name=INDEX_NAME,
+            source_table_name=SOURCE_TABLE,
+            primary_key="chunk_id",
+            pipeline_type="TRIGGERED",
+            embedding_source_column="content",
+            embedding_model_endpoint_name=EMBEDDING_MODEL,
+            columns_to_sync=["content", "source_file", "department", "chunk_index"],
+        )
+        print("Index creation initiated. This may take 5-15 minutes.")
 
 # COMMAND ----------
 # MAGIC %md

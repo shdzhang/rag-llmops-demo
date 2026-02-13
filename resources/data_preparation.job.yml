@@ -1,7 +1,7 @@
 resources:
   jobs:
     data_preparation:
-      name: "[${bundle.target}] Data Preparation"
+      name: "Data Preparation"
       queue:
         enabled: true
       parameters:

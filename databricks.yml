@@ -30,14 +30,11 @@ targets:
     mode: development
     default: true
     workspace:
-      host: https://adb-984752964297111.11.azuredatabricks.net  # Update with your workspace URL
-    variables:
-      schema_name: "corporate_affairs_dev"
+      host: https://adb-984752964297111.11.azuredatabricks.net
 
   prod:
     mode: production
     workspace:
-      host: https://adb-984752964297111.11.azuredatabricks.net  # Update with your workspace URL
-    variables:
-      catalog_name: "prod"
-      schema_name: "corporate_affairs_prod"
+      host: https://adb-984752964297111.11.azuredatabricks.net
+    # variables:
+    #   catalog_name: "prod"  # Uncomment to use a separate prod catalog

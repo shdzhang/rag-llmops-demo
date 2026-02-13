@@ -1,7 +1,7 @@
 resources:
   jobs:
     monitoring:
-      name: "[${bundle.target}] Production Monitoring"
+      name: "Production Monitoring"
       queue:
         enabled: true
       parameters:

@@ -36,20 +36,6 @@ Context: {{context}}
 Question: {{question}}
 """
 
-prompt_v1 = mlflow.genai.register_prompt(
-    name=PROMPT_NAME,
-    template=system_prompt_v1,
-    commit_message="v1: Basic corporate affairs prompt",
-)
-
-print(f"Registered prompt '{prompt_v1.name}' version {prompt_v1.version}")
-
-# COMMAND ----------
-# MAGIC %md
-# MAGIC ## Step 2: Register an Improved Prompt (v2 - Enhanced)
-
-# COMMAND ----------
-
 system_prompt_v2 = """\
 You are a knowledgeable corporate affairs assistant helping employees navigate \
 company policies, procedures, and general corporate information.
@@ -69,13 +55,37 @@ who to contact (e.g., HR, Legal, Finance).
 {{question}}
 """
 
-prompt_v2 = mlflow.genai.register_prompt(
-    name=PROMPT_NAME,
-    template=system_prompt_v2,
-    commit_message="v2: Enhanced with structured instructions, citations, and fallback guidance",
-)
+# --- Idempotent registration: only create new versions if the template changed ---
+# Try to load the latest version; if it matches v2 template, skip registration.
+try:
+    existing = mlflow.genai.load_prompt(PROMPT_NAME)
+    if existing.template.strip() == system_prompt_v2.strip():
+        print(f"Prompt '{PROMPT_NAME}' v{existing.version} already up to date - skipping registration")
+        prompt_v2 = existing
+    else:
+        print(f"Prompt template changed - registering new version")
+        prompt_v2 = mlflow.genai.register_prompt(
+            name=PROMPT_NAME,
+            template=system_prompt_v2,
+            commit_message="v2: Enhanced with structured instructions, citations, and fallback guidance",
+        )
+        print(f"Registered prompt '{prompt_v2.name}' version {prompt_v2.version}")
+except Exception:
+    # Prompt doesn't exist yet - register v1 first, then v2
+    print("Prompt not found - creating initial versions")
+    prompt_v1 = mlflow.genai.register_prompt(
+        name=PROMPT_NAME,
+        template=system_prompt_v1,
+        commit_message="v1: Basic corporate affairs prompt",
+    )
+    print(f"Registered prompt '{prompt_v1.name}' version {prompt_v1.version}")
 
-print(f"Registered prompt '{prompt_v2.name}' version {prompt_v2.version}")
+    prompt_v2 = mlflow.genai.register_prompt(
+        name=PROMPT_NAME,
+        template=system_prompt_v2,
+        commit_message="v2: Enhanced with structured instructions, citations, and fallback guidance",
+    )
+    print(f"Registered prompt '{prompt_v2.name}' version {prompt_v2.version}")
 
 # COMMAND ----------
 # MAGIC %md

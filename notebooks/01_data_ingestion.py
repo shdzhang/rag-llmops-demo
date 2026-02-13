@@ -24,6 +24,8 @@ print(f"Target table: {CATALOG}.{SCHEMA}.{TABLE_NAME}")
 
 # COMMAND ----------
 
+# The schema is created by the DAB bundle (resources.schemas.corporate_schema).
+# We only ensure the catalog exists as a safety net.
 spark.sql(f"CREATE CATALOG IF NOT EXISTS {CATALOG}")
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{SCHEMA}")
 print(f"Schema {CATALOG}.{SCHEMA} ready")

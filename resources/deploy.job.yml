@@ -1,7 +1,7 @@
 resources:
   jobs:
     deploy_agent:
-      name: "[${bundle.target}] Deploy Agent"
+      name: "Deploy Agent"
       queue:
         enabled: true
       parameters:

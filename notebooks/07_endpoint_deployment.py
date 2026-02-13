@@ -67,13 +67,16 @@ print(f"  Run ID: {champion.run_id}")
 
 # COMMAND ----------
 
+# agents.deploy() is idempotent: if the endpoint already exists it updates the
+# model version; if not it creates a new endpoint.  This makes the notebook
+# safe to re-run multiple times.
 deployment = agents.deploy(
     model_name=UC_MODEL_NAME,
     model_version=champion_version,
     tags={"environment": "dev", "source": "llmops-demo"},
 )
 
-print(f"Deployment initiated!")
+print(f"Deployment initiated (create or update)!")
 print(f"  Endpoint name: {deployment.endpoint_name}")
 print(f"  Query endpoint: {deployment.query_endpoint}")
 
@@ -98,10 +101,10 @@ for i in range(60):  # 30 minutes max
         endpoint = w.serving_endpoints.get(endpoint_name)
         state = endpoint.state
 
-        if state.ready == "READY":
+        if str(state.ready) == "READY" or "READY" in str(state.ready):
             print(f"\nEndpoint is READY! (took ~{i * 30}s)")
             break
-        elif state.config_update == "UPDATE_FAILED":
+        elif "FAILED" in str(state.config_update or ""):
             print(f"\nEndpoint deployment FAILED!")
             print(f"  Error: {state}")
             break

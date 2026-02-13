@@ -3,7 +3,7 @@ resources:
     corporate_chatbot:
       name: ${var.model_name}
       catalog_name: ${var.catalog_name}
-      schema_name: ${var.schema_name}
+      schema_name: ${resources.schemas.corporate_schema.name}
       comment: "Corporate Affairs RAG Chatbot - ResponsesAgent with OBO and Prompt Registry"
       grants:
         - privileges:

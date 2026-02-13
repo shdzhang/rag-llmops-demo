@@ -1,7 +1,7 @@
 resources:
   jobs:
     build_evaluate:
-      name: "[${bundle.target}] Build and Evaluate Agent"
+      name: "Build and Evaluate Agent"
       queue:
         enabled: true
       parameters:

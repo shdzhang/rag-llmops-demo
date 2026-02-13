@@ -127,6 +127,9 @@ with mlflow.start_run(run_name="rag_agent_build") as run:
     # Log agent configuration as parameters (for tracking / comparison)
     mlflow.log_params({**agent_config, "agent_type": "ResponsesAgent"})
 
+    # Prompt URI for linking to this run (shows in experiment UI under Prompts)
+    prompt_uri = f"prompts:/{CATALOG}.{SCHEMA}.rag_prompt@production"
+
     # Log the agent using file-based approach (absolute path resolved above)
     model_info = mlflow.pyfunc.log_model(
         name="agent",
@@ -135,6 +138,7 @@ with mlflow.start_run(run_name="rag_agent_build") as run:
         resources=resources,
         pip_requirements=pip_requirements,
         input_example=input_example,
+        prompts=[prompt_uri],
     )
 
     logged_run_id = run.info.run_id
