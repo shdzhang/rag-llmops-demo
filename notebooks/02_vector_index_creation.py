@@ -24,9 +24,9 @@ import time
 CATALOG = dbutils.widgets.get("catalog_name")
 SCHEMA = dbutils.widgets.get("schema_name")
 
-SOURCE_TABLE = f"{CATALOG}.{SCHEMA}.document_chunks"
-INDEX_NAME = f"{CATALOG}.{SCHEMA}.corporate_docs_index"
-VS_ENDPOINT_NAME = "corporate_affairs_vs_endpoint"
+SOURCE_TABLE = f"{CATALOG}.{SCHEMA}.doc_chunks"
+INDEX_NAME = f"{CATALOG}.{SCHEMA}.docs_index"
+VS_ENDPOINT_NAME = "corp_vs_endpoint"
 EMBEDDING_MODEL = "databricks-gte-large-en"
 
 print(f"Source table: {SOURCE_TABLE}")

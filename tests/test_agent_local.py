@@ -52,7 +52,9 @@ def test_streaming():
 def test_prompt_registry_loading():
     """Test that the Prompt Registry integration works."""
     try:
-        prompt = mlflow.genai.load_prompt("prompts:/main.corporate_affairs.rag_prompt@production")
+        # Use the config defaults for local testing
+        from config import CATALOG, SCHEMA
+        prompt = mlflow.genai.load_prompt(f"prompts:/{CATALOG}.{SCHEMA}.rag_prompt@production")
         assert prompt.template, "Expected non-empty prompt template"
         print(f"PASS: Loaded prompt version {prompt.version} from registry")
         print(f"  Template preview: {prompt.template[:100]}...")

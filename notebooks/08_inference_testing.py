@@ -23,8 +23,16 @@ CATALOG = dbutils.widgets.get("catalog_name")
 SCHEMA = dbutils.widgets.get("schema_name")
 MODEL_NAME = dbutils.widgets.get("model_name")
 
-# Endpoint name from agents.deploy() convention
-ENDPOINT_NAME = f"agents-{CATALOG}-{SCHEMA}-{MODEL_NAME}".replace("_", "-")
+# Get the endpoint name set by notebook 07 via task values
+try:
+    ENDPOINT_NAME = dbutils.jobs.taskValues.get(taskKey="deploy", key="endpoint_name")
+    print(f"Got endpoint name from task values: {ENDPOINT_NAME}")
+except Exception:
+    # Fallback: reconstruct using agents.deploy() convention
+    # Convention: agents_{catalog}-{schema}-{model} (dots->hyphens, underscores kept)
+    UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
+    ENDPOINT_NAME = f"agents_{UC_MODEL_NAME}".replace(".", "-")
+    print(f"Reconstructed endpoint name: {ENDPOINT_NAME}")
 
 w = WorkspaceClient()
 print(f"Testing endpoint: {ENDPOINT_NAME}")

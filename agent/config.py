@@ -10,9 +10,9 @@ Edit these values to match your Databricks workspace.
 """
 
 # Unity Catalog (define first - used by other constants)
-CATALOG = "main"
-SCHEMA = "corporate_affairs"
-MODEL_NAME = "corporate_affairs_chatbot"
+CATALOG = "shidong_catalog"
+SCHEMA = "corp_affairs"
+MODEL_NAME = "corp_chatbot"
 REGISTERED_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
 
 # Foundation Model endpoint for the agent's LLM
@@ -25,8 +25,8 @@ JUDGE_LLM_ENDPOINT_NAME = "databricks-claude-opus-4-6"
 EMBEDDING_ENDPOINT_NAME = "databricks-gte-large-en"
 
 # Vector Search
-VECTOR_SEARCH_ENDPOINT = "corporate_affairs_vs_endpoint"
-VECTOR_SEARCH_INDEX = f"{CATALOG}.{SCHEMA}.corporate_docs_index"
+VECTOR_SEARCH_ENDPOINT = "corp_vs_endpoint"
+VECTOR_SEARCH_INDEX = f"{CATALOG}.{SCHEMA}.docs_index"
 
 # MLflow Prompt Registry (3-level UC name required)
 PROMPT_NAME = f"{CATALOG}.{SCHEMA}.rag_prompt"

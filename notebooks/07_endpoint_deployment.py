@@ -49,11 +49,18 @@ print(f"MLflow version: {mlflow.__version__}")
 
 # COMMAND ----------
 
-champion = client.get_model_version_by_alias(UC_MODEL_NAME, "champion")
-champion_version = champion.version
-
-print(f"Champion version: {champion_version}")
-print(f"  Run ID: {champion.run_id}")
+try:
+    champion = client.get_model_version_by_alias(UC_MODEL_NAME, "champion")
+    champion_version = champion.version
+    print(f"Champion version: {champion_version}")
+    print(f"  Run ID: {champion.run_id}")
+except Exception:
+    # Fall back to candidate if champion hasn't been set yet
+    print("No 'champion' alias found - falling back to 'candidate'")
+    champion = client.get_model_version_by_alias(UC_MODEL_NAME, "candidate")
+    champion_version = champion.version
+    print(f"Candidate version: {champion_version}")
+    print(f"  Run ID: {champion.run_id}")
 
 # COMMAND ----------
 # MAGIC %md
@@ -67,18 +74,31 @@ print(f"  Run ID: {champion.run_id}")
 
 # COMMAND ----------
 
-# agents.deploy() is idempotent: if the endpoint already exists it updates the
-# model version; if not it creates a new endpoint.  This makes the notebook
-# safe to re-run multiple times.
-deployment = agents.deploy(
-    model_name=UC_MODEL_NAME,
-    model_version=champion_version,
-    tags={"environment": "dev", "source": "llmops-demo"},
-)
+# agents.deploy() creates or updates the serving endpoint.
+# If the exact same model version is already deployed, it raises a ValueError
+# which we catch and treat as success (endpoint is already up to date).
+try:
+    deployment = agents.deploy(
+        model_name=UC_MODEL_NAME,
+        model_version=champion_version,
+        tags={"source": "llmops-demo"},
+    )
+    endpoint_name = deployment.endpoint_name
+    print(f"Deployment initiated (create or update)!")
+    print(f"  Endpoint name: {endpoint_name}")
+    print(f"  Query endpoint: {deployment.query_endpoint}")
+except ValueError as e:
+    if "already serves" in str(e):
+        print(f"Endpoint already serves {UC_MODEL_NAME} v{champion_version} - no update needed.")
+        # Derive endpoint name from the UC model name (agents.deploy convention)
+        endpoint_name = f"agents_{UC_MODEL_NAME}".replace(".", "-")
+        print(f"  Endpoint name: {endpoint_name}")
+    else:
+        raise
 
-print(f"Deployment initiated (create or update)!")
-print(f"  Endpoint name: {deployment.endpoint_name}")
-print(f"  Query endpoint: {deployment.query_endpoint}")
+# Pass endpoint name to downstream notebooks (08, 09)
+if "dbutils" in dir():
+    dbutils.jobs.taskValues.set(key="endpoint_name", value=endpoint_name)
 
 # COMMAND ----------
 # MAGIC %md
@@ -93,7 +113,6 @@ from databricks.sdk import WorkspaceClient
 
 w = WorkspaceClient()
 
-endpoint_name = deployment.endpoint_name
 print(f"Waiting for endpoint '{endpoint_name}' to be ready...")
 
 for i in range(60):  # 30 minutes max

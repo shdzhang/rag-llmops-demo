@@ -92,7 +92,7 @@ env:
   - name: DATABRICKS_HOST
     value: "${workspace.host}"
   - name: MODEL_SERVING_ENDPOINT
-    value: "agents-main-corporate_affairs-corporate_affairs_chatbot"
+    value: "agents_<catalog>-<schema>-<model>"  # Replace with your actual endpoint name
 ```
 
 #### Step 3: Deploy with DAB
@@ -102,8 +102,8 @@ Add to `databricks.yml`:
 ```yaml
 resources:
   apps:
-    corporate_chatbot_app:
-      name: "corporate-chatbot"
+    chatbot_app:
+      name: "corp-chatbot"
       source_code_path: ./app
       config:
         command:

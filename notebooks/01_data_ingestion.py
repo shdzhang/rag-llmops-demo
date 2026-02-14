@@ -14,7 +14,7 @@
 # --- Configuration (values come from DAB job parameters -> databricks.yml variables) ---
 CATALOG = dbutils.widgets.get("catalog_name")
 SCHEMA = dbutils.widgets.get("schema_name")
-TABLE_NAME = "document_chunks"
+TABLE_NAME = "doc_chunks"
 
 print(f"Target table: {CATALOG}.{SCHEMA}.{TABLE_NAME}")
 

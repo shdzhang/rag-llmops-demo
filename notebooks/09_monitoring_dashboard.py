@@ -25,9 +25,10 @@ CATALOG = dbutils.widgets.get("catalog_name")
 SCHEMA = dbutils.widgets.get("schema_name")
 MODEL_NAME = dbutils.widgets.get("model_name")
 
-# agents.deploy() creates an endpoint named: agents_<catalog>-<schema>-<model>
-# with dots replaced by hyphens. The inference table uses underscores.
-ENDPOINT_NAME = f"agents-{CATALOG}-{SCHEMA}-{MODEL_NAME}".replace("_", "-")
+# Endpoint name using agents.deploy() convention:
+# agents_{catalog}-{schema}-{model} (dots->hyphens, underscores kept)
+UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
+ENDPOINT_NAME = f"agents_{UC_MODEL_NAME}".replace(".", "-")
 
 # Inference table created by AI Gateway: <catalog>.<schema>.`<endpoint_with_underscores>_payload`
 _endpoint_table_name = ENDPOINT_NAME.replace("-", "_")
