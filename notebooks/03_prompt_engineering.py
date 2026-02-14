@@ -9,7 +9,7 @@
 # MAGIC 4. Attach model configuration to prompts
 
 # COMMAND ----------
-# MAGIC %pip install mlflow>=3.1 databricks-sdk openai
+# MAGIC %pip install mlflow>=3.1 databricks-sdk databricks-openai
 # MAGIC %restart_python
 
 # COMMAND ----------
@@ -118,10 +118,9 @@ print(f"Model config: {loaded.model_config}")
 # MAGIC ## Step 4: Test the Prompt
 
 # COMMAND ----------
-from databricks.sdk import WorkspaceClient
+from databricks_openai import DatabricksOpenAI
 
-w = WorkspaceClient()
-openai_client = w.serving_endpoints.get_open_ai_client()
+openai_client = DatabricksOpenAI()
 
 # Sample test
 sample_context = """

@@ -49,8 +49,10 @@ class CorporateAffairsAgent(ResponsesAgent):
         from databricks_langchain import VectorSearchRetrieverTool
 
         # --- LLM client (via OpenAI-compatible API) ---
+        from databricks_openai import DatabricksOpenAI
+
         self.workspace_client = WorkspaceClient()
-        self.openai_client = self.workspace_client.serving_endpoints.get_open_ai_client()
+        self.openai_client = DatabricksOpenAI()
 
         # --- Vector Search retriever tool ---
         self.vs_tool = VectorSearchRetrieverTool(

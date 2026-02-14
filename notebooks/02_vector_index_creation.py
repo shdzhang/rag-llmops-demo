@@ -111,8 +111,8 @@ except Exception as e:
 
 # COMMAND ----------
 
-print("Waiting for index to be ready...")
-for i in range(60):
+print("Waiting for index to be ready and synced with data...")
+for i in range(60):  # up to ~30 min
     try:
         index = vsc.get_index(endpoint_name=VS_ENDPOINT_NAME, index_name=INDEX_NAME)
         status = index.describe().get("status", {})
@@ -120,16 +120,30 @@ for i in range(60):
         detailed_state = status.get("detailed_state", "UNKNOWN")
 
         if state:
-            print(f"\nIndex is READY!")
-            break
-
-        print(f"  [{i * 30}s] State: {detailed_state}")
+            # Index is ready for queries -- now verify it has data
+            try:
+                test = index.similarity_search(
+                    query_text="test", columns=["content"], num_results=1
+                )
+                rows = test.get("result", {}).get("data_array", [])
+                if rows:
+                    print(f"\nIndex is READY with {len(rows)}+ rows of data!")
+                    break
+                else:
+                    print(f"  [{i * 30}s] Index ready but 0 rows - sync still in progress")
+            except Exception:
+                print(f"  [{i * 30}s] Index ready but query failed - sync in progress")
+        else:
+            print(f"  [{i * 30}s] State: {detailed_state}")
     except Exception as e:
         print(f"  [{i * 30}s] Waiting... ({e})")
 
     time.sleep(30)
 else:
-    print("Timeout waiting for index. Check Databricks UI for status.")
+    raise RuntimeError(
+        f"Index {INDEX_NAME} not ready with data after 30 minutes. "
+        "Check the Vector Search UI for sync status."
+    )
 
 # COMMAND ----------
 # MAGIC %md

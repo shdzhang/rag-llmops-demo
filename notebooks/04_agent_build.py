@@ -9,7 +9,7 @@
 # MAGIC 4. Registers to Unity Catalog
 
 # COMMAND ----------
-# MAGIC %pip install mlflow>=3.1 databricks-sdk databricks-langchain databricks-vectorsearch databricks-agents openai
+# MAGIC %pip install mlflow>=3.1 databricks-sdk databricks-langchain databricks-vectorsearch databricks-agents databricks-openai
 # MAGIC %restart_python
 
 # COMMAND ----------
@@ -106,7 +106,7 @@ pip_requirements = [
     "databricks-langchain",
     "databricks-vectorsearch",
     "databricks-sdk",
-    "openai",
+    "databricks-openai",
 ]
 
 # Input example for model signature inference
