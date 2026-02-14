@@ -19,30 +19,35 @@ End User -> Databricks App (OBO proxy) -> Agent Endpoint
                 |                              |-- LLM endpoint (as service)
 ```
 
-## Two Deployment Modes
+## Two Levels of OBO
 
-### Mode 1: Standard (agents.deploy) - No OBO
+### Level 1: Agent-Level OBO (agents.deploy) - Built-In
 
-This is the default mode used in notebook `07_endpoint_deployment.py`.
-
-- The agent runs as the **service principal**
-- All users share the same permissions
-- Simpler to set up, good for most use cases
+This is the mode used in notebook `07_endpoint_deployment.py`. The agent itself
+uses `get_user_workspace_client()` at query time to authenticate Vector Search
+calls as the calling user.
 
 ```python
-from databricks import agents
-agents.deploy(model_name="main.corp.chatbot", model_version="1")
+# In rag_agent.py (inside predict method):
+from databricks.agents import get_user_workspace_client
+ws_client = get_user_workspace_client()  # Authenticated as the calling user
+vsc = VectorSearchClient(workspace_client=ws_client)
 ```
 
-### Mode 2: Full OBO via Databricks Apps
+- Vector Search queries respect the **user's** Unity Catalog permissions
+- Falls back to service principal when running locally or in tests
+- No additional infrastructure needed
 
-For user-level data isolation, deploy as a **Databricks App** that proxies
-requests to the Model Serving endpoint.
+### Level 2: Full OBO via Databricks Apps
+
+For end-to-end user identity propagation (e.g., a custom web UI), deploy as
+a **Databricks App** that forwards the user's OAuth token to the serving endpoint.
 
 #### Step 1: Create the App
 
 ```python
 # app.py - FastAPI app with OBO support
+import os
 from fastapi import FastAPI, Request
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.config import Config
@@ -65,14 +70,17 @@ async def chat(request: Request):
         # Fallback to service principal
         user_client = WorkspaceClient()
 
-    # Query the agent endpoint on behalf of the user
+    # Query the ResponsesAgent endpoint on behalf of the user
+    # Note: ResponsesAgent uses "input" (not "messages") and "output" (not "choices")
     body = await request.json()
-    response = user_client.serving_endpoints.query(
-        name=os.environ["MODEL_SERVING_ENDPOINT"],
-        messages=body["messages"],
+    endpoint = os.environ["MODEL_SERVING_ENDPOINT"]
+    result = user_client.api_client.do(
+        "POST",
+        f"/serving-endpoints/{endpoint}/invocations",
+        body={"input": body.get("input", [{"role": "user", "content": body.get("question", "")}])},
     )
 
-    return response.as_dict()
+    return result
 ```
 
 #### Step 2: Configure app.yml
@@ -124,7 +132,7 @@ import requests
 
 response = requests.post(
     "https://<app-url>/chat",
-    json={"messages": [{"role": "user", "content": "Who am I?"}]},
+    json={"input": [{"role": "user", "content": "What is the remote work policy?"}]},
     headers={"Authorization": f"Bearer {user_token}"},
 )
 ```
@@ -136,11 +144,12 @@ response = requests.post(
 3. **Audit Logging**: All API calls made via OBO are logged under the user's identity
 4. **Token Expiry**: OBO tokens have the same expiry as the user's session token
 
-## When to Use OBO
+## When to Use Each Level
 
-| Scenario | Recommended Mode |
+| Scenario | Recommended Level |
 |----------|-----------------|
-| All users see the same data | Standard (agents.deploy) |
-| Different users have different permissions | OBO via Databricks App |
-| Regulatory compliance requires per-user audit | OBO via Databricks App |
-| Quick POC / demo | Standard (agents.deploy) |
+| All users see the same data | Level 1: `agents.deploy()` with `get_user_workspace_client()` |
+| Per-user UC permissions on Vector Search | Level 1: `agents.deploy()` with `get_user_workspace_client()` |
+| Custom web UI with user identity propagation | Level 2: Databricks App |
+| Regulatory compliance requiring per-user audit trails | Level 2: Databricks App |
+| Quick POC / demo | Level 1: `agents.deploy()` (simplest) |

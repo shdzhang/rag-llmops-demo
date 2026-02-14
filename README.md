@@ -8,7 +8,7 @@ End-to-end LLMOps demonstration for a RAG chatbot agent on Databricks, showcasin
 |---------|---------------|
 | **Agent Framework** | MLflow 3.x `ResponsesAgent` |
 | **Prompt Management** | MLflow Prompt Registry with versioning and aliases |
-| **Retrieval** | Databricks Vector Search with `VectorSearchRetrieverTool` |
+| **Retrieval** | Databricks Vector Search (managed embeddings + similarity search) |
 | **Evaluation** | `mlflow.genai.evaluate()` with built-in scorers |
 | **Deployment** | `databricks.agents.deploy()` with AI Gateway |
 | **OBO Auth** | Databricks Apps with `x-forwarded-access-token` |
@@ -37,10 +37,12 @@ rag-llmops-demo/
 │   ├── data_preparation.job.yml    # Data pipeline job
 │   ├── build_evaluate.job.yml      # Build + evaluate pipeline job
 │   ├── deploy.job.yml              # Deployment job
-│   └── monitoring.job.yml          # Scheduled monitoring job
+│   ├── monitoring.job.yml          # Scheduled monitoring job
+│   └── end_to_end.job.yml          # Orchestrator job (runs all stages)
 ├── docs/                           # Documentation
 │   ├── architecture.md             # Architecture overview
-│   └── obo_setup_guide.md          # OBO setup instructions
+│   ├── obo_setup_guide.md          # OBO setup instructions
+│   └── troubleshooting_guide.md    # All issues encountered and fixes
 ├── tests/                          # Local tests
 │   └── test_agent_local.py         # Agent validation (run on cluster)
 ├── databricks.yml                  # DAB bundle configuration
@@ -66,20 +68,19 @@ Edit `databricks.yml` to set your workspace URL, then update `agent/config.py` w
 databricks bundle deploy -t dev
 ```
 
-### 3. Run the Pipeline
+### 3. Run the Full Pipeline (Single Trigger)
 
 ```bash
-# Data preparation
-databricks bundle run data_preparation -t dev
-
-# Build, evaluate, and deploy
-databricks bundle run build_evaluate -t dev
-databricks bundle run deploy_agent -t dev
+# Runs all stages: data prep -> build/evaluate -> deploy -> monitor
+databricks bundle run end_to_end -t dev
 ```
 
-### 4. Monitor
+Or run individual stages:
 
 ```bash
+databricks bundle run data_preparation -t dev
+databricks bundle run build_evaluate -t dev
+databricks bundle run deploy_agent -t dev
 databricks bundle run monitoring -t dev
 ```
 
