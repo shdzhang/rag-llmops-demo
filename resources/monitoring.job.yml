@@ -11,6 +11,8 @@ resources:
           default: "${resources.schemas.corporate_schema.name}"
         - name: "model_name"
           default: "${resources.registered_models.corporate_chatbot.name}"
+        - name: "experiment_name"
+          default: "${var.experiment_name}"
       tasks:
         - task_key: monitoring_dashboard
           notebook_task:
@@ -19,6 +21,7 @@ resources:
               catalog_name: "{{job.parameters.catalog_name}}"
               schema_name: "{{job.parameters.schema_name}}"
               model_name: "{{job.parameters.model_name}}"
+              experiment_name: "{{job.parameters.experiment_name}}"
       schedule:
         quartz_cron_expression: "0 0 */6 * * ?"  # Every 6 hours
         timezone_id: "America/Los_Angeles"

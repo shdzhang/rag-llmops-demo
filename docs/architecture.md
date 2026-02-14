@@ -44,10 +44,14 @@
 - Endpoint testing: basic queries, edge cases, latency benchmarks
 
 ### 6. Monitoring (09)
-- AI Gateway Inference Tables for request/response logging
-- Latency percentiles (P50, P95, P99)
-- Token usage and cost estimation
-- Alerting via Databricks SQL
+- **MLflow External Monitor** for automated quality assessment on production traces
+  - Built-in judges: safety, groundedness, relevance
+  - Custom guideline judges: accuracy, professional tone
+  - Configurable sampling rate (100% default, lower for high traffic)
+- AI Gateway Inference Tables for operational analytics
+  - Latency percentiles (P50, P95, P99)
+  - Token usage and cost estimation
+  - Error rate and popular questions
 
 ## Technology Stack
 
@@ -60,7 +64,7 @@
 | Evaluation | MLflow GenAI Evaluate |
 | Model Registry | Unity Catalog |
 | Deployment | databricks.agents.deploy() |
-| Monitoring | AI Gateway Inference Tables |
+| Monitoring | MLflow External Monitor + AI Gateway Inference Tables |
 | Orchestration | Databricks Asset Bundles (DABs) |
 
 ### Orchestration (End-to-End Job)
