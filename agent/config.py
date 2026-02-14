@@ -19,7 +19,7 @@ REGISTERED_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
 LLM_ENDPOINT_NAME = "databricks-claude-sonnet-4-5"
 
 # LLM Judge endpoint for evaluation (notebook 05)
-JUDGE_LLM_ENDPOINT_NAME = "databricks-claude-opus-4-6"
+JUDGE_LLM_ENDPOINT_NAME = "databricks-claude-sonnet-4-5"
 
 # Embedding model for Vector Search
 EMBEDDING_ENDPOINT_NAME = "databricks-gte-large-en"

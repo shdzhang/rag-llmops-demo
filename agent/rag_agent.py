@@ -7,6 +7,7 @@ It uses:
 - Databricks Vector Search for retrieval
 - MLflow Prompt Registry for versioned prompt management
 - ModelConfig for parameterised configuration (no hardcoded catalog/schema)
+- On-Behalf-Of (OBO) user authorization for per-user UC permissions
 """
 
 import uuid
@@ -38,29 +39,74 @@ class CorporateAffairsAgent(ResponsesAgent):
     RAG agent for corporate affairs Q&A.
 
     Uses Databricks Vector Search for retrieval and MLflow Prompt Registry
-    for versioned system prompts. Supports OBO authentication so that
-    each user's query respects their Unity Catalog permissions.
+    for versioned system prompts.
+
+    Supports On-Behalf-Of (OBO) user authorization: when deployed via
+    agents.deploy() or Databricks Apps, Vector Search queries run with
+    the calling user's UC permissions. Falls back to the service principal
+    during local development and testing.
     """
 
     def __init__(self):
         super().__init__()
 
-        from databricks.sdk import WorkspaceClient
-        from databricks_langchain import VectorSearchRetrieverTool
-
-        # --- LLM client (via OpenAI-compatible API) ---
         from databricks_openai import DatabricksOpenAI
 
-        self.workspace_client = WorkspaceClient()
+        # LLM client is shared across requests (stateless, uses SP creds)
         self.openai_client = DatabricksOpenAI()
 
-        # --- Vector Search retriever tool ---
-        self.vs_tool = VectorSearchRetrieverTool(
-            index_name=VECTOR_SEARCH_INDEX,
-            num_results=5,
-            columns=["content", "source_file", "department"],
-        )
+    # ------------------------------------------------------------------
+    # OBO: obtain a workspace client scoped to the calling user
+    # ------------------------------------------------------------------
+    def _get_workspace_client(self):
+        """
+        Return a WorkspaceClient scoped to the calling user (OBO).
 
+        Must be called inside predict(), NOT in __init__(), because
+        user credentials are only available at request time via the
+        x-forwarded-access-token header.
+
+        Falls back to the service-principal WorkspaceClient for local
+        development, testing, and non-OBO serving deployments.
+        """
+        try:
+            from databricks.agents import get_user_workspace_client
+            return get_user_workspace_client()
+        except Exception:
+            from databricks.sdk import WorkspaceClient
+            return WorkspaceClient()
+
+    # ------------------------------------------------------------------
+    # Retrieval
+    # ------------------------------------------------------------------
+    @mlflow.trace
+    def _retrieve_context(self, question: str) -> str:
+        """Retrieve relevant documents from Vector Search using OBO client."""
+        from databricks.vector_search.client import VectorSearchClient
+
+        try:
+            vsc = VectorSearchClient(
+                workspace_client=self._get_workspace_client(),
+                disable_notice=True,
+            )
+            index = vsc.get_index(index_name=VECTOR_SEARCH_INDEX)
+            results = index.similarity_search(
+                query_text=question,
+                columns=["content", "source_file", "department"],
+                num_results=5,
+            )
+            docs = results.get("result", {}).get("data_array", [])
+            if not docs:
+                return "No relevant documents found."
+            return "\n\n".join(
+                f"[Source: {row[1]} | Dept: {row[2]}]\n{row[0]}" for row in docs
+            )
+        except Exception as e:
+            return f"Error retrieving documents: {e}"
+
+    # ------------------------------------------------------------------
+    # Prompt
+    # ------------------------------------------------------------------
     def _load_and_format_prompt(self, context: str, question: str) -> str:
         """
         Load the prompt from MLflow Prompt Registry and fill in variables.
@@ -84,23 +130,15 @@ class CorporateAffairsAgent(ResponsesAgent):
                 f"Question: {question}"
             )
 
-    @mlflow.trace
-    def _retrieve_context(self, question: str) -> str:
-        """Retrieve relevant documents from Vector Search."""
-        try:
-            results = self.vs_tool.invoke(question)
-            if isinstance(results, str):
-                return results
-            return str(results)
-        except Exception as e:
-            return f"Error retrieving documents: {e}"
-
+    # ------------------------------------------------------------------
+    # Predict
+    # ------------------------------------------------------------------
     def predict(self, request: ResponsesAgentRequest) -> ResponsesAgentResponse:
         """
         Handle a user request using RAG.
 
         Steps:
-        1. Retrieve relevant documents from Vector Search
+        1. Retrieve relevant documents from Vector Search (OBO)
         2. Load and format prompt from MLflow Prompt Registry
         3. Generate response with Claude via Foundation Model API
         4. Return formatted response with source citations
@@ -111,10 +149,10 @@ class CorporateAffairsAgent(ResponsesAgent):
             if msg.role == "user":
                 user_message = msg.content
 
-        # Step 1: Retrieve context
+        # Step 1: Retrieve context (uses OBO client for UC permissions)
         context = self._retrieve_context(user_message)
 
-        # Step 2: Load prompt from Prompt Registry and fill in {{context}} + {{question}}
+        # Step 2: Load prompt from Prompt Registry and fill in variables
         formatted_prompt = self._load_and_format_prompt(
             context=context, question=user_message
         )

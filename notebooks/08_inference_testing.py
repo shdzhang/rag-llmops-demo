@@ -13,10 +13,9 @@
 # MAGIC %restart_python
 
 # COMMAND ----------
-from databricks.sdk import WorkspaceClient
-from databricks.sdk.service.serving import ChatMessage, ChatMessageRole
 import time
 import statistics
+from databricks.sdk import WorkspaceClient
 
 # --- Configuration (from DAB job parameters) ---
 CATALOG = dbutils.widgets.get("catalog_name")
@@ -28,10 +27,9 @@ try:
     ENDPOINT_NAME = dbutils.jobs.taskValues.get(taskKey="deploy", key="endpoint_name")
     print(f"Got endpoint name from task values: {ENDPOINT_NAME}")
 except Exception:
-    # Fallback: reconstruct using agents.deploy() convention
-    # Convention: agents_{catalog}-{schema}-{model} (dots->hyphens, underscores kept)
+    # Fallback: reconstruct using agents.deploy() convention (truncated to 63 chars)
     UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
-    ENDPOINT_NAME = f"agents_{UC_MODEL_NAME}".replace(".", "-")
+    ENDPOINT_NAME = f"agents_{UC_MODEL_NAME}".replace(".", "-")[:63]
     print(f"Reconstructed endpoint name: {ENDPOINT_NAME}")
 
 w = WorkspaceClient()
@@ -43,10 +41,63 @@ print(f"Testing endpoint: {ENDPOINT_NAME}")
 
 # COMMAND ----------
 
-endpoint = w.serving_endpoints.get(ENDPOINT_NAME)
-state = endpoint.state
-print(f"Endpoint state: {state.ready}")
-assert str(state.ready) == "READY", f"Endpoint not ready: {state}"
+# Wait for endpoint to be fully ready (READY + no pending config updates)
+print(f"Checking endpoint '{ENDPOINT_NAME}' readiness...")
+for _i in range(40):  # up to ~20 min
+    endpoint = w.serving_endpoints.get(ENDPOINT_NAME)
+    state = endpoint.state
+    ready = str(state.ready)
+    config = str(state.config_update) if state.config_update else "NONE"
+    is_ready = "READY" in ready
+    is_updating = "IN_PROGRESS" in config or "NOT_READY" in config
+
+    if is_ready and not is_updating:
+        print(f"Endpoint is READY! (waited ~{_i * 30}s)")
+        break
+    else:
+        print(f"  [{_i * 30}s] ready={ready}, config_update={config}")
+        time.sleep(30)
+else:
+    raise RuntimeError(f"Endpoint '{ENDPOINT_NAME}' not ready after 20 min: {state}")
+
+# COMMAND ----------
+# MAGIC %md
+# MAGIC ## Helper: Query ResponsesAgent Endpoint
+
+# COMMAND ----------
+
+# The agent is a ResponsesAgent (Responses API format), not Chat Completions.
+# Input uses "input" (array of messages), not "messages".
+# Output uses "output" (array of output items), not "choices".
+#
+# We use the SDK's api_client to make requests - it handles all auth methods
+# (PAT, Azure AAD, OAuth) transparently, unlike raw requests + bearer token.
+
+def query_agent(question: str, max_output_tokens: int = 500) -> dict:
+    """Query the ResponsesAgent endpoint and return parsed result."""
+    payload = {
+        "input": [{"role": "user", "content": question}],
+        "max_output_tokens": max_output_tokens,
+    }
+    result = w.api_client.do(
+        "POST",
+        f"/serving-endpoints/{ENDPOINT_NAME}/invocations",
+        body=payload,
+    )
+
+    # Extract text from ResponsesAgent output format
+    answer = ""
+    for item in result.get("output", []):
+        if item.get("type") == "message":
+            for content_block in item.get("content", []):
+                if content_block.get("type") == "output_text":
+                    answer += content_block.get("text", "")
+    return {"answer": answer, "raw": result}
+
+# Quick test
+print("Running a quick test query...")
+test = query_agent("Hello, what can you help me with?")
+print(f"Response: {test['answer'][:200]}")
 
 # COMMAND ----------
 # MAGIC %md
@@ -67,16 +118,11 @@ print("Testing basic queries...\n")
 for q in test_questions:
     try:
         start = time.time()
-        response = w.serving_endpoints.query(
-            name=ENDPOINT_NAME,
-            messages=[ChatMessage(role=ChatMessageRole.USER, content=q)],
-            max_tokens=300,
-        )
+        result = query_agent(q, max_output_tokens=300)
         latency = (time.time() - start) * 1000
 
-        answer = response.choices[0].message.content
         print(f"Q: {q}")
-        print(f"A: {answer[:150]}...")
+        print(f"A: {result['answer'][:200]}...")
         print(f"Latency: {latency:.0f}ms\n")
     except Exception as e:
         print(f"Q: {q}")
@@ -99,14 +145,9 @@ edge_cases = [
 print("Testing edge cases...\n")
 for label, q in edge_cases:
     try:
-        response = w.serving_endpoints.query(
-            name=ENDPOINT_NAME,
-            messages=[ChatMessage(role=ChatMessageRole.USER, content=q[:1000])],
-            max_tokens=200,
-        )
-        answer = response.choices[0].message.content
+        result = query_agent(q[:1000], max_output_tokens=200)
         print(f"[{label}] Q: {q[:80]}...")
-        print(f"A: {answer[:150]}...\n")
+        print(f"A: {result['answer'][:200]}...\n")
     except Exception as e:
         print(f"[{label}] Q: {q[:80]}...")
         print(f"ERROR: {e}\n")
@@ -123,11 +164,7 @@ latencies = []
 print(f"Running latency benchmark (10 queries)...")
 for i in range(10):
     start = time.time()
-    response = w.serving_endpoints.query(
-        name=ENDPOINT_NAME,
-        messages=[ChatMessage(role=ChatMessageRole.USER, content=benchmark_question)],
-        max_tokens=200,
-    )
+    result = query_agent(benchmark_question, max_output_tokens=200)
     latency = (time.time() - start) * 1000
     latencies.append(latency)
     print(f"  Query {i+1}: {latency:.0f}ms")

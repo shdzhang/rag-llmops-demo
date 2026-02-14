@@ -75,8 +75,36 @@ except Exception:
 # COMMAND ----------
 
 # agents.deploy() creates or updates the serving endpoint.
-# If the exact same model version is already deployed, it raises a ValueError
-# which we catch and treat as success (endpoint is already up to date).
+# It may fail if:
+#   - The endpoint is currently updating from a previous deploy (retry after wait)
+#   - The exact same model version is already deployed (treat as success)
+import time
+from databricks.sdk import WorkspaceClient
+
+_w = WorkspaceClient()
+# agents.deploy() truncates endpoint names to 63 characters
+endpoint_name = f"agents_{UC_MODEL_NAME}".replace(".", "-")[:63]
+
+# If the endpoint exists and is updating, wait for it to finish first
+try:
+    _ep = _w.serving_endpoints.get(endpoint_name)
+    _cfg = str(_ep.state.config_update) if _ep.state and _ep.state.config_update else ""
+    if "IN_PROGRESS" in _cfg or "NOT_READY" in str(_ep.state.ready):
+        print(f"Endpoint '{endpoint_name}' is currently updating - waiting for it to finish...")
+        for _wi in range(40):  # up to 20 min
+            time.sleep(30)
+            _ep = _w.serving_endpoints.get(endpoint_name)
+            _cfg = str(_ep.state.config_update) if _ep.state and _ep.state.config_update else "NONE"
+            _rdy = str(_ep.state.ready)
+            if "READY" in _rdy and "IN_PROGRESS" not in _cfg and "NOT_READY" not in _cfg:
+                print(f"  Previous update finished (waited ~{(_wi+1)*30}s)")
+                break
+            print(f"  [{(_wi+1)*30}s] ready={_rdy}, config_update={_cfg}")
+        else:
+            print("  Warning: timed out waiting for previous update")
+except Exception:
+    pass  # Endpoint doesn't exist yet - that's fine
+
 try:
     deployment = agents.deploy(
         model_name=UC_MODEL_NAME,
@@ -90,8 +118,9 @@ try:
 except ValueError as e:
     if "already serves" in str(e):
         print(f"Endpoint already serves {UC_MODEL_NAME} v{champion_version} - no update needed.")
-        # Derive endpoint name from the UC model name (agents.deploy convention)
-        endpoint_name = f"agents_{UC_MODEL_NAME}".replace(".", "-")
+        print(f"  Endpoint name: {endpoint_name}")
+    elif "currently updating" in str(e):
+        print(f"Endpoint is still updating - will wait for it in the next cell.")
         print(f"  Endpoint name: {endpoint_name}")
     else:
         raise
@@ -114,22 +143,30 @@ from databricks.sdk import WorkspaceClient
 w = WorkspaceClient()
 
 print(f"Waiting for endpoint '{endpoint_name}' to be ready...")
+print("  (endpoint must be READY with no pending config updates)")
 
 for i in range(60):  # 30 minutes max
     try:
         endpoint = w.serving_endpoints.get(endpoint_name)
         state = endpoint.state
+        ready = str(state.ready)
+        config = str(state.config_update) if state.config_update else "NONE"
 
-        if str(state.ready) == "READY" or "READY" in str(state.ready):
+        is_ready = "READY" in ready
+        is_updating = "IN_PROGRESS" in config or "NOT_READY" in config
+
+        if is_ready and not is_updating:
             print(f"\nEndpoint is READY! (took ~{i * 30}s)")
             break
-        elif "FAILED" in str(state.config_update or ""):
+        elif "FAILED" in config:
             print(f"\nEndpoint deployment FAILED!")
             print(f"  Error: {state}")
-            break
+            raise Exception(f"Endpoint deployment failed: {state}")
         else:
-            print(f"  [{i * 30}s] State: {state.ready}, Config: {state.config_update}")
+            print(f"  [{i * 30}s] ready={ready}, config_update={config}")
     except Exception as e:
+        if "FAILED" in str(e):
+            raise
         print(f"  [{i * 30}s] Waiting... ({e})")
 
     time.sleep(30)
@@ -142,22 +179,26 @@ else:
 
 # COMMAND ----------
 
-from databricks.sdk.service.serving import ChatMessage, ChatMessageRole
+# The agent is a ResponsesAgent (Responses API format).
+# Use SDK's api_client which handles all auth methods (PAT, Azure AAD, OAuth).
 
 try:
-    response = w.serving_endpoints.query(
-        name=endpoint_name,
-        messages=[
-            ChatMessage(
-                role=ChatMessageRole.USER,
-                content="What is the company's remote work policy?",
-            )
-        ],
-        max_tokens=500,
+    result = w.api_client.do(
+        "POST",
+        f"/serving-endpoints/{endpoint_name}/invocations",
+        body={"input": [{"role": "user", "content": "What is the company's remote work policy?"}]},
     )
 
+    # Extract answer from Responses API output format
+    answer = ""
+    for item in result.get("output", []):
+        if item.get("type") == "message":
+            for block in item.get("content", []):
+                if block.get("type") == "output_text":
+                    answer += block.get("text", "")
+
     print("Test query successful!")
-    print(f"Response: {response.choices[0].message.content}")
+    print(f"Response: {answer[:500]}")
 except Exception as e:
     print(f"Test query failed: {e}")
     print("The endpoint may still be starting up. Try again in a few minutes.")

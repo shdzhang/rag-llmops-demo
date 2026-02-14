@@ -29,8 +29,8 @@ mlflow.set_registry_uri("databricks-uc")
 mlflow.set_experiment(EXPERIMENT_NAME)
 
 # Model endpoints
-AGENT_LLM = "databricks-claude-sonnet-4-5"       # Agent uses Sonnet 4/5
-JUDGE_LLM = "databricks:/databricks-claude-opus-4-6"  # LLM Judge uses Opus 4/6 (databricks:/ prefix required)
+AGENT_LLM = "databricks-claude-sonnet-4-5"
+JUDGE_LLM = "databricks:/databricks-claude-sonnet-4-5"
 
 # Quality gates (metric names match scorer output keys)
 QUALITY_THRESHOLDS = {
@@ -56,10 +56,13 @@ print(f"Judge LLM: {JUDGE_LLM}")
 # The Correctness scorer checks whether the agent's answer is semantically
 # consistent with the expected response. Overly detailed expectations cause
 # false negatives because the judge penalises any missing detail.
+#
+# Questions are written the way real employees would ask them --
+# informal, sometimes vague, sometimes with typos or extra context.
 eval_data = [
     # --- Remote Work Policy ---
     {
-        "inputs": {"question": "What is the remote work policy?"},
+        "inputs": {"question": "Hey, I just joined last month — can I work from home yet?"},
         "expectations": {
             "expected_response": (
                 "Employees may work remotely up to 3 days per week after completing "
@@ -68,7 +71,7 @@ eval_data = [
         },
     },
     {
-        "inputs": {"question": "How much is the equipment stipend for home office?"},
+        "inputs": {"question": "I need a better chair for my home setup. Does the company help with that?"},
         "expectations": {
             "expected_response": (
                 "There is a one-time $500 equipment stipend for home office setup."
@@ -76,7 +79,7 @@ eval_data = [
         },
     },
     {
-        "inputs": {"question": "How much does the company reimburse for home internet?"},
+        "inputs": {"question": "My internet bill is $90/month — will the company cover any of it?"},
         "expectations": {
             "expected_response": (
                 "The company reimburses up to $75 per month for home internet."
@@ -85,7 +88,7 @@ eval_data = [
     },
     # --- Parental Leave Policy ---
     {
-        "inputs": {"question": "How many weeks of paid parental leave do primary caregivers get?"},
+        "inputs": {"question": "My wife and I are expecting in June. How much time off do I get as the primary caregiver?"},
         "expectations": {
             "expected_response": (
                 "Primary caregivers receive 16 weeks of paid leave at full salary."
@@ -93,7 +96,7 @@ eval_data = [
         },
     },
     {
-        "inputs": {"question": "Does the parental leave policy apply to adoption?"},
+        "inputs": {"question": "We're adopting a child — do we still get parental leave?"},
         "expectations": {
             "expected_response": (
                 "Yes, adoption and foster care parents receive the same benefits "
@@ -103,7 +106,7 @@ eval_data = [
     },
     # --- Expense Policy ---
     {
-        "inputs": {"question": "How do I submit an expense report?"},
+        "inputs": {"question": "I had a client dinner last week and need to get reimbursed. What's the process?"},
         "expectations": {
             "expected_response": (
                 "Expense reports must be submitted through the Concur system within "
@@ -112,7 +115,7 @@ eval_data = [
         },
     },
     {
-        "inputs": {"question": "What is the maximum hotel rate for domestic travel?"},
+        "inputs": {"question": "Booking a hotel for the NYC conference next month — is there a nightly limit?"},
         "expectations": {
             "expected_response": (
                 "The maximum nightly hotel rate is $250 for domestic travel."
@@ -120,7 +123,7 @@ eval_data = [
         },
     },
     {
-        "inputs": {"question": "What approval is needed for expenses over $1000?"},
+        "inputs": {"question": "I need to buy $1,500 worth of software licenses. Who needs to sign off?"},
         "expectations": {
             "expected_response": (
                 "Expenses between $500 and $2,000 require director approval."
@@ -129,7 +132,7 @@ eval_data = [
     },
     # --- IT Security ---
     {
-        "inputs": {"question": "What are the password requirements?"},
+        "inputs": {"question": "IT is making me reset my password again — what are the actual requirements?"},
         "expectations": {
             "expected_response": (
                 "Passwords must be at least 12 characters and include uppercase, "
@@ -138,7 +141,7 @@ eval_data = [
         },
     },
     {
-        "inputs": {"question": "How quickly must I report a lost company device?"},
+        "inputs": {"question": "I think I left my work laptop in an Uber. What should I do?"},
         "expectations": {
             "expected_response": (
                 "Lost or stolen devices must be reported to IT within 1 hour."
@@ -147,7 +150,7 @@ eval_data = [
     },
     # --- Company Holidays ---
     {
-        "inputs": {"question": "How many paid holidays does the company offer?"},
+        "inputs": {"question": "Planning a vacation — how many company holidays do we get this year?"},
         "expectations": {
             "expected_response": (
                 "The company offers 13 paid holidays plus 2 floating holidays per year."
@@ -155,7 +158,7 @@ eval_data = [
         },
     },
     {
-        "inputs": {"question": "Is there a winter break at the company?"},
+        "inputs": {"question": "Is the office closed between Christmas and New Year's?"},
         "expectations": {
             "expected_response": (
                 "Yes, there is a company-wide shutdown from December 26 to December 31."

@@ -28,7 +28,7 @@ MODEL_NAME = dbutils.widgets.get("model_name")
 # Endpoint name using agents.deploy() convention:
 # agents_{catalog}-{schema}-{model} (dots->hyphens, underscores kept)
 UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
-ENDPOINT_NAME = f"agents_{UC_MODEL_NAME}".replace(".", "-")
+ENDPOINT_NAME = f"agents_{UC_MODEL_NAME}".replace(".", "-")[:63]
 
 # Inference table created by AI Gateway: <catalog>.<schema>.`<endpoint_with_underscores>_payload`
 _endpoint_table_name = ENDPOINT_NAME.replace("-", "_")
@@ -152,7 +152,10 @@ display(token_df) if "display" in dir() else token_df.show()
 
 questions_df = spark.sql(f"""
     SELECT
-      get_json_object(request, '$.messages[0].content') AS question,
+      COALESCE(
+        get_json_object(request, '$.input[0].content'),
+        get_json_object(request, '$.messages[0].content')
+      ) AS question,
       count(*) AS frequency
     FROM {INFERENCE_TABLE}
     WHERE request_time >= date_sub(current_date(), 7)
