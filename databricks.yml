@@ -17,6 +17,10 @@ variables:
     description: "Name of the registered model"
     default: "corp_chatbot"
 
+  prompt_name:
+    description: "Base name for the MLflow Prompt Registry entry (full name = catalog.schema.prompt_name)"
+    default: "rag_prompt"
+
   vector_search_endpoint:
     description: "Vector search endpoint name"
     default: "corp_vs_endpoint"

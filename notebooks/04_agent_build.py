@@ -26,9 +26,9 @@ MODEL_NAME = dbutils.widgets.get("model_name")
 EXPERIMENT_NAME = dbutils.widgets.get("experiment_name")
 
 LLM_ENDPOINT = dbutils.widgets.get("llm_endpoint")
-
 UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
 VS_INDEX = f"{CATALOG}.{SCHEMA}.docs_index"
+PROMPT_NAME = f"{CATALOG}.{SCHEMA}.{dbutils.widgets.get('prompt_name')}"
 
 print(f"MLflow version: {mlflow.__version__}")
 print(f"UC Model: {UC_MODEL_NAME}")
@@ -119,7 +119,7 @@ input_example = {
 agent_config = {
     "llm_endpoint": LLM_ENDPOINT,
     "vector_search_index": VS_INDEX,
-    "prompt_name": f"{CATALOG}.{SCHEMA}.rag_prompt",
+    "prompt_name": PROMPT_NAME,
     "prompt_alias": "production",
 }
 
@@ -128,7 +128,7 @@ with mlflow.start_run(run_name="rag_agent_build") as run:
     mlflow.log_params({**agent_config, "agent_type": "ResponsesAgent"})
 
     # Prompt URI for linking to this run (shows in experiment UI under Prompts)
-    prompt_uri = f"prompts:/{CATALOG}.{SCHEMA}.rag_prompt@production"
+    prompt_uri = f"prompts:/{PROMPT_NAME}@production"
 
     # Log the agent using file-based approach (absolute path resolved above)
     model_info = mlflow.pyfunc.log_model(

@@ -25,6 +25,7 @@ EXPERIMENT_NAME = dbutils.widgets.get("experiment_name")
 AGENT_LLM = dbutils.widgets.get("llm_endpoint")
 JUDGE_LLM_ENDPOINT = dbutils.widgets.get("judge_llm_endpoint")
 VS_ENDPOINT = dbutils.widgets.get("vector_search_endpoint")
+PROMPT_NAME = f"{CATALOG}.{SCHEMA}.{dbutils.widgets.get('prompt_name')}"
 
 UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
 
@@ -227,7 +228,7 @@ def predict_fn(question: str) -> str:
     )
 
     # Step 2-3: Load and format prompt from Prompt Registry
-    prompt = mlflow.genai.load_prompt(f"prompts:/{CATALOG}.{SCHEMA}.rag_prompt@production")
+    prompt = mlflow.genai.load_prompt(f"prompts:/{PROMPT_NAME}@production")
     formatted = prompt.format(context=context, question=question)
 
     # Step 4: Call the LLM
