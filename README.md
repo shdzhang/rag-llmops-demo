@@ -20,8 +20,7 @@ End-to-end LLMOps demonstration for a RAG chatbot agent on Databricks, showcasin
 ```
 rag-llmops-demo/
 ├── agent/                          # Agent source code (logged to MLflow)
-│   ├── rag_agent.py                # ResponsesAgent with Prompt Registry + VS
-│   └── config.py                   # Shared configuration constants
+│   └── rag_agent.py                # ResponsesAgent with Prompt Registry + VS
 ├── notebooks/                      # Databricks notebooks (run sequentially)
 │   ├── 01_data_ingestion.py        # Ingest documents to Delta
 │   ├── 02_vector_index_creation.py # Create Vector Search index
@@ -60,7 +59,7 @@ rag-llmops-demo/
 
 ### 1. Configure
 
-Edit `databricks.yml` to set your workspace URL, then update `agent/config.py` with your catalog/schema names.
+Edit `databricks.yml` to set your workspace URL and update the variables (catalog, schema, model name, endpoints) to match your environment.
 
 ### 2. Deploy Infrastructure
 

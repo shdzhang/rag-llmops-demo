@@ -8,7 +8,7 @@ Usage:
 import sys
 import os
 
-# Add agent directory to path
+# Add agent directory to path so `from rag_agent import AGENT` works
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "agent"))
 
 import mlflow
@@ -52,9 +52,8 @@ def test_streaming():
 def test_prompt_registry_loading():
     """Test that the Prompt Registry integration works."""
     try:
-        # Use the config defaults for local testing
-        from config import CATALOG, SCHEMA
-        prompt = mlflow.genai.load_prompt(f"prompts:/{CATALOG}.{SCHEMA}.rag_prompt@production")
+        # Prompt name must match what's registered by NB03 (see databricks.yml vars)
+        prompt = mlflow.genai.load_prompt("prompts:/shidong_catalog.corp_affairs.rag_prompt@production")
         assert prompt.template, "Expected non-empty prompt template"
         print(f"PASS: Loaded prompt version {prompt.version} from registry")
         print(f"  Template preview: {prompt.template[:100]}...")
