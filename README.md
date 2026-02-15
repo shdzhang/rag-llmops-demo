@@ -11,8 +11,8 @@ End-to-end LLMOps demonstration for a RAG chatbot agent on Databricks, showcasin
 | **Retrieval** | Databricks Vector Search (managed embeddings + similarity search) |
 | **Evaluation** | `mlflow.genai.evaluate()` with built-in scorers |
 | **Deployment** | `databricks.agents.deploy()` with AI Gateway |
-| **OBO Auth** | Databricks Apps with `x-forwarded-access-token` |
-| **Monitoring** | AI Gateway Inference Tables + Lakehouse Monitor |
+| **OBO Auth** | `CredentialStrategy.MODEL_SERVING_USER_CREDENTIALS` + optional Databricks Apps |
+| **Monitoring** | MLflow External Monitor + AI Gateway Inference Tables |
 | **Orchestration** | Databricks Asset Bundles (DABs) |
 
 ## Project Structure
@@ -96,7 +96,7 @@ Data Prep -> Prompt Registry -> Agent Build -> Evaluate -> Deploy -> Test -> Mon
 3. **Agent Build**: Log ResponsesAgent with resources to MLflow + UC
 4. **Evaluation**: Run `mlflow.genai.evaluate()`, enforce quality gates
 5. **Deployment**: `agents.deploy()` with AI Gateway + Review App
-6. **Monitoring**: Query inference tables, track latency/errors/costs
+6. **Monitoring**: MLflow External Monitor (automated judges) + inference table analytics
 
 ## Technologies
 

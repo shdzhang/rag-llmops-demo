@@ -54,7 +54,7 @@ Malformed model uri 'databricks-claude-opus-4-6'. The URI must be in the format 
 
 **Cause:** MLflow 3.x scorers require the `provider:/model-name` URI format.
 
-**Fix:** Changed from `"databricks-claude-opus-4-6"` to `"databricks:/databricks-claude-sonnet-4-5"`.
+**Fix:** Changed to `"databricks:/databricks-claude-opus-4-1"` (provider:/model-name format).
 
 ---
 
@@ -199,11 +199,44 @@ spark.sql(f"ALTER TABLE {table_path} SET TBLPROPERTIES (delta.enableChangeDataFe
 **Fixes:**
 1. Fixed CDF ordering (see 3.1).
 2. Simplified `expected_response` to contain only essential facts.
-3. Changed LLM judge from `databricks-claude-opus-4-6` to `databricks-claude-sonnet-4-5` (faster, more reliable).
+3. Changed LLM judge to `databricks-claude-opus-4-1` (later switched from Sonnet 4.5 for better reasoning; kept fast by reducing scorers to 1).
 
 ---
 
-### 4.3 No Champion Model for Deployment
+### 4.3 Evaluation Takes 10+ Hours
+
+**Symptom:** `mlflow.genai.evaluate()` ran for over 10 hours before being cancelled.
+
+**Cause:** Combination of factors:
+1. **3 scorers x 12 test cases = 36 judge calls** plus 12 predict calls (48 LLM calls total)
+2. **Claude Sonnet 4.5 as judge** -- rate-limited Foundation Model endpoint with high latency per call
+3. Each scorer sends a large prompt (full context + response + guidelines) to the judge
+
+**Fix:**
+1. Reduced to **1 scorer** (`Correctness` only) -- additional quality checks (tone, citation, safety) now run in production via the External Monitor (NB09)
+2. Switched judge model to **Claude Opus 4.1** (`databricks:/databricks-claude-opus-4-1`) -- better throughput for batch scoring
+3. Reduced test cases from 12 to **8** (most diverse coverage)
+4. Added concurrency env vars:
+```python
+os.environ["MLFLOW_GENAI_EVAL_MAX_WORKERS"] = "4"
+os.environ["MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS"] = "2"
+```
+
+Expected evaluation time: **~10-15 minutes** instead of 10+ hours.
+
+---
+
+### 4.4 Notebooks 06/07/08 Create Separate Experiments
+
+**Symptom:** MLflow UI showed a stray `07_endpoint_deployment` experiment alongside the main experiment.
+
+**Cause:** Notebooks 06, 07, and 08 were missing `mlflow.set_experiment()`. Databricks auto-creates an experiment named after the notebook path.
+
+**Fix:** Added `experiment_name` parameter to the deploy job YAML (`resources/deploy.job.yml`) and added `mlflow.set_experiment(EXPERIMENT_NAME)` to all three notebooks (06, 07, 08). All notebooks now share the same experiment.
+
+---
+
+### 4.5 No Champion Model for Deployment
 
 **Symptom:** Notebook 07 failed with `Registered Model Alias 'champion' does not exist.`
 
@@ -362,21 +395,28 @@ MODEL_NAME = dbutils.widgets.get("model_name")
 
 ## 7. Authentication & SDK
 
-### 7.1 On-Behalf-Of (OBO) Must Be Called at Request Time
+### 7.1 VectorSearchClient Does Not Accept `workspace_client`
 
-**Symptom:** OBO client initialized in `__init__` didn't have user credentials.
+**Error:**
+```
+VectorSearchClient.__init__() got an unexpected keyword argument 'workspace_client'
+```
 
-**Cause:** `get_user_workspace_client()` only works inside `predict()` because user credentials (via `x-forwarded-access-token`) are only available at request time.
+**Cause:** Early implementations passed a `WorkspaceClient` from `get_user_workspace_client()` to `VectorSearchClient(workspace_client=...)`. The `VectorSearchClient` constructor does not support this parameter.
 
-**Fix:** Created `_get_workspace_client()` helper method called inside `predict()` / `_retrieve_context()`:
+**Fix:** Use `CredentialStrategy.MODEL_SERVING_USER_CREDENTIALS` for OBO authentication:
 ```python
-def _get_workspace_client(self):
-    try:
-        from databricks.agents import get_user_workspace_client
-        return get_user_workspace_client()
-    except Exception:
-        from databricks.sdk import WorkspaceClient
-        return WorkspaceClient()
+from databricks.vector_search.client import VectorSearchClient, CredentialStrategy
+
+try:
+    # OBO: use calling user's credentials in Model Serving
+    vsc = VectorSearchClient(
+        credential_strategy=CredentialStrategy.MODEL_SERVING_USER_CREDENTIALS,
+        disable_notice=True,
+    )
+except Exception:
+    # Fallback for local dev / notebook (no user credentials available)
+    vsc = VectorSearchClient(disable_notice=True)
 ```
 
 ---

@@ -32,14 +32,15 @@
 
 ### 4. Evaluation (05)
 - **mlflow.genai.evaluate()** with built-in scorers
-- Scorers: `Correctness`, `Guidelines` (professional tone, source citation)
-- Quality gates: Minimum thresholds for each metric
+- Offline scorer: `Correctness` (LLM judge: Claude Opus 4.1) -- keeps evaluation fast (~10-15 min)
+- Additional quality checks (tone, citation, safety, groundedness) run in production via External Monitor (NB09)
+- Quality gates: Minimum correctness threshold
 - Auto-promote to `@champion` on pass
 
 ### 5. Deployment & Testing (07, 08)
 - **databricks.agents.deploy()** for managed deployment
 - Enables AI Gateway, Inference Tables, Review App
-- Built-in OBO via `get_user_workspace_client()` for per-user Vector Search permissions
+- Built-in OBO via `CredentialStrategy.MODEL_SERVING_USER_CREDENTIALS` for per-user Vector Search permissions
 - Optional: Full OBO via Databricks Apps for custom web UI (see `docs/obo_setup_guide.md`)
 - Endpoint testing: basic queries, edge cases, latency benchmarks
 
@@ -58,7 +59,7 @@
 | Component | Technology |
 |-----------|-----------|
 | Agent Framework | MLflow 3.x ResponsesAgent |
-| LLM | Databricks Foundation Models (Claude Sonnet 4.5) |
+| LLM | Databricks Foundation Models (Claude Sonnet 4.5 for RAG, Opus 4.1 for judge) |
 | Retrieval | Databricks Vector Search |
 | Prompt Management | MLflow Prompt Registry |
 | Evaluation | MLflow GenAI Evaluate |

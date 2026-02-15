@@ -23,19 +23,27 @@ End User -> Databricks App (OBO proxy) -> Agent Endpoint
 
 ### Level 1: Agent-Level OBO (agents.deploy) - Built-In
 
-This is the mode used in notebook `07_endpoint_deployment.py`. The agent itself
-uses `get_user_workspace_client()` at query time to authenticate Vector Search
-calls as the calling user.
+This is the mode used in notebook `07_endpoint_deployment.py`. The agent uses
+`CredentialStrategy.MODEL_SERVING_USER_CREDENTIALS` at query time so that
+Vector Search queries run as the calling user.
 
 ```python
-# In rag_agent.py (inside predict method):
-from databricks.agents import get_user_workspace_client
-ws_client = get_user_workspace_client()  # Authenticated as the calling user
-vsc = VectorSearchClient(workspace_client=ws_client)
+# In rag_agent.py (_retrieve_context method):
+from databricks.vector_search.client import VectorSearchClient, CredentialStrategy
+
+try:
+    # OBO: use the calling user's credentials when running in Model Serving
+    vsc = VectorSearchClient(
+        credential_strategy=CredentialStrategy.MODEL_SERVING_USER_CREDENTIALS,
+        disable_notice=True,
+    )
+except Exception:
+    # Fallback for local dev / notebook testing (no user credentials available)
+    vsc = VectorSearchClient(disable_notice=True)
 ```
 
 - Vector Search queries respect the **user's** Unity Catalog permissions
-- Falls back to service principal when running locally or in tests
+- Falls back to default credentials when running locally or in tests
 - No additional infrastructure needed
 
 ### Level 2: Full OBO via Databricks Apps
@@ -148,8 +156,8 @@ response = requests.post(
 
 | Scenario | Recommended Level |
 |----------|-----------------|
-| All users see the same data | Level 1: `agents.deploy()` with `get_user_workspace_client()` |
-| Per-user UC permissions on Vector Search | Level 1: `agents.deploy()` with `get_user_workspace_client()` |
+| All users see the same data | Level 1: `agents.deploy()` with `CredentialStrategy` |
+| Per-user UC permissions on Vector Search | Level 1: `agents.deploy()` with `CredentialStrategy` |
 | Custom web UI with user identity propagation | Level 2: Databricks App |
 | Regulatory compliance requiring per-user audit trails | Level 2: Databricks App |
 | Quick POC / demo | Level 1: `agents.deploy()` (simplest) |
