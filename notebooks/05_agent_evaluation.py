@@ -30,10 +30,10 @@ mlflow.set_experiment(EXPERIMENT_NAME)
 
 # Model endpoints
 AGENT_LLM = "databricks-claude-sonnet-4-5"
-# Use a fast model for the LLM judge to keep evaluation under 10-15 minutes.
-# Claude Sonnet 4.5 is too slow for batch evaluation (rate-limited, high latency).
-# Llama 3.3 70B is fast, accurate for correctness scoring, and has high throughput.
-JUDGE_LLM = "databricks:/databricks-meta-llama-3-3-70b-instruct"
+# Use Claude Opus 4.1 as the LLM judge — strong reasoning for correctness scoring.
+# Combined with reduced scorers (1 instead of 3) and 8 test cases, this keeps
+# evaluation under 15-20 minutes.
+JUDGE_LLM = "databricks:/databricks-claude-opus-4-1"
 
 # Quality gates (metric names match scorer output keys)
 # Additional quality checks (tone, citation, safety) run in production via NB09 External Monitor.
