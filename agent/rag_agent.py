@@ -56,39 +56,30 @@ class CorporateAffairsAgent(ResponsesAgent):
         self.openai_client = DatabricksOpenAI()
 
     # ------------------------------------------------------------------
-    # OBO: obtain a workspace client scoped to the calling user
-    # ------------------------------------------------------------------
-    def _get_workspace_client(self):
-        """
-        Return a WorkspaceClient scoped to the calling user (OBO).
-
-        Must be called inside predict(), NOT in __init__(), because
-        user credentials are only available at request time via the
-        x-forwarded-access-token header.
-
-        Falls back to the service-principal WorkspaceClient for local
-        development, testing, and non-OBO serving deployments.
-        """
-        try:
-            from databricks.agents import get_user_workspace_client
-            return get_user_workspace_client()
-        except Exception:
-            from databricks.sdk import WorkspaceClient
-            return WorkspaceClient()
-
-    # ------------------------------------------------------------------
     # Retrieval
     # ------------------------------------------------------------------
     @mlflow.trace
     def _retrieve_context(self, question: str) -> str:
-        """Retrieve relevant documents from Vector Search using OBO client."""
+        """Retrieve relevant documents from Vector Search.
+
+        When deployed via agents.deploy(), uses MODEL_SERVING_USER_CREDENTIALS
+        to query Vector Search on behalf of the calling user (OBO).
+        Falls back to default credentials for local dev / notebook testing.
+        """
         from databricks.vector_search.client import VectorSearchClient
 
         try:
-            vsc = VectorSearchClient(
-                workspace_client=self._get_workspace_client(),
-                disable_notice=True,
-            )
+            # OBO: use the calling user's credentials when running in Model Serving
+            try:
+                from databricks.vector_search.client import CredentialStrategy
+                vsc = VectorSearchClient(
+                    credential_strategy=CredentialStrategy.MODEL_SERVING_USER_CREDENTIALS,
+                    disable_notice=True,
+                )
+            except Exception:
+                # Fallback for local dev / notebook (no user credentials available)
+                vsc = VectorSearchClient(disable_notice=True)
+
             index = vsc.get_index(index_name=VECTOR_SEARCH_INDEX)
             results = index.similarity_search(
                 query_text=question,
