@@ -19,8 +19,8 @@ resources:
           default: "${var.judge_llm_endpoint}"
         - name: "vector_search_endpoint"
           default: "${var.vector_search_endpoint}"
-        - name: "prompt_name"
-          default: "${var.prompt_name}"
+        - name: "prompt_base_name"
+          default: "${var.prompt_base_name}"
       tasks:
         - task_key: prompt_registry
           notebook_task:
@@ -29,7 +29,7 @@ resources:
               catalog_name: "{{job.parameters.catalog_name}}"
               schema_name: "{{job.parameters.schema_name}}"
               llm_endpoint: "{{job.parameters.llm_endpoint}}"
-              prompt_name: "{{job.parameters.prompt_name}}"
+              prompt_base_name: "{{job.parameters.prompt_base_name}}"
         - task_key: agent_build
           depends_on:
             - task_key: prompt_registry
@@ -41,7 +41,7 @@ resources:
               model_name: "{{job.parameters.model_name}}"
               experiment_name: "{{job.parameters.experiment_name}}"
               llm_endpoint: "{{job.parameters.llm_endpoint}}"
-              prompt_name: "{{job.parameters.prompt_name}}"
+              prompt_base_name: "{{job.parameters.prompt_base_name}}"
         - task_key: agent_evaluation
           depends_on:
             - task_key: agent_build
@@ -55,6 +55,6 @@ resources:
               llm_endpoint: "{{job.parameters.llm_endpoint}}"
               judge_llm_endpoint: "{{job.parameters.judge_llm_endpoint}}"
               vector_search_endpoint: "{{job.parameters.vector_search_endpoint}}"
-              prompt_name: "{{job.parameters.prompt_name}}"
+              prompt_base_name: "{{job.parameters.prompt_base_name}}"
       tags:
         Project: "${bundle.name}"

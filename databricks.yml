@@ -21,10 +21,6 @@ variables:
     description: "Base name for the MLflow Prompt Registry entry"
     default: "rag_prompt"
 
-  prompt_name:
-    description: "Full 3-level prompt name (catalog.schema.base_name)"
-    default: "${var.catalog_name}.${var.schema_name}.${var.prompt_base_name}"
-
   vector_search_endpoint:
     description: "Vector search endpoint name"
     default: "corp_vs_endpoint"

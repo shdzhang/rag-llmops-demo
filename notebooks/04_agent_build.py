@@ -28,7 +28,7 @@ EXPERIMENT_NAME = dbutils.widgets.get("experiment_name")
 LLM_ENDPOINT = dbutils.widgets.get("llm_endpoint")
 UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
 VS_INDEX = f"{CATALOG}.{SCHEMA}.docs_index"
-PROMPT_NAME = dbutils.widgets.get("prompt_name")
+PROMPT_NAME = f"{CATALOG}.{SCHEMA}.{dbutils.widgets.get('prompt_base_name')}"
 
 print(f"MLflow version: {mlflow.__version__}")
 print(f"UC Model: {UC_MODEL_NAME}")

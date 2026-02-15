@@ -39,7 +39,7 @@ from mlflow.entities.model_registry import PromptModelConfig
 CATALOG = dbutils.widgets.get("catalog_name")
 SCHEMA = dbutils.widgets.get("schema_name")
 LLM_ENDPOINT = dbutils.widgets.get("llm_endpoint")
-PROMPT_NAME = dbutils.widgets.get("prompt_name")
+PROMPT_NAME = f"{CATALOG}.{SCHEMA}.{dbutils.widgets.get('prompt_base_name')}"
 
 print(f"Prompt: {PROMPT_NAME}")
 print(f"LLM endpoint: {LLM_ENDPOINT}")
