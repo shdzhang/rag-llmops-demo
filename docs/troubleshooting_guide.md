@@ -346,6 +346,29 @@ parameters:
 
 ---
 
+### 6.4 Prompt Registration Fails: `SCHEMA_DOES_NOT_EXIST`
+
+**Error:**
+```
+RestException: SCHEMA_DOES_NOT_EXIST: Schema 'shidong_catalog.corp_affairs' does not exist.
+```
+
+**Cause:** Same class of bug as 6.3. The `prompt_name` DAB variable was computed in `databricks.yml` using `${var.schema_name}` (raw value: `corp_affairs`). In `mode: development`, the actual schema is prefixed by DAB (e.g., `dev_shidong_zhang_corp_affairs`), but DAB variables can only reference other variables — not resources. So the prompt name pointed to a non-existent schema.
+
+**Key insight:** DAB variables (`${var.X}`) can only interpolate other variables. They **cannot** reference resources (`${resources.schemas.X.name}`). The dev-prefixed schema name is only available via resource references in job parameter defaults.
+
+**Fix:** Removed the computed `prompt_name` variable from `databricks.yml`. Instead:
+1. `databricks.yml` defines `prompt_base_name` (just `"rag_prompt"`)
+2. Job YAML passes it as `prompt_base_name` parameter
+3. Notebooks construct the full name using their (correctly-prefixed) widget values:
+```python
+PROMPT_NAME = f"{CATALOG}.{SCHEMA}.{dbutils.widgets.get('prompt_base_name')}"
+```
+
+**Rule of thumb:** Never construct 3-level UC names (`catalog.schema.object`) in `databricks.yml` variables. Always construct them in notebooks using `CATALOG` and `SCHEMA` from job parameters, which carry the correct DAB-prefixed values.
+
+---
+
 ## 7. Quick Reference
 
 ### Querying a ResponsesAgent Endpoint
