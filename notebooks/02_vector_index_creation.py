@@ -24,10 +24,11 @@ import time
 CATALOG = dbutils.widgets.get("catalog_name")
 SCHEMA = dbutils.widgets.get("schema_name")
 
+VS_ENDPOINT_NAME = dbutils.widgets.get("vector_search_endpoint")
+EMBEDDING_MODEL = dbutils.widgets.get("embedding_endpoint")
+
 SOURCE_TABLE = f"{CATALOG}.{SCHEMA}.doc_chunks"
 INDEX_NAME = f"{CATALOG}.{SCHEMA}.docs_index"
-VS_ENDPOINT_NAME = "corp_vs_endpoint"
-EMBEDDING_MODEL = "databricks-gte-large-en"
 
 print(f"Source table: {SOURCE_TABLE}")
 print(f"Index name: {INDEX_NAME}")

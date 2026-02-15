@@ -38,9 +38,12 @@ from mlflow.entities.model_registry import PromptModelConfig
 
 CATALOG = dbutils.widgets.get("catalog_name")
 SCHEMA = dbutils.widgets.get("schema_name")
+LLM_ENDPOINT = dbutils.widgets.get("llm_endpoint")
+
 PROMPT_NAME = f"{CATALOG}.{SCHEMA}.rag_prompt"
 
 print(f"Prompt: {PROMPT_NAME}")
+print(f"LLM endpoint: {LLM_ENDPOINT}")
 print(f"MLflow version: {mlflow.__version__}")
 
 # COMMAND ----------
@@ -139,7 +142,7 @@ if not prompt_exists and current_prompt is None:
 # COMMAND ----------
 
 model_config = PromptModelConfig(
-    model_name="databricks-claude-sonnet-4-5",
+    model_name=LLM_ENDPOINT,
     temperature=0.1,
     max_tokens=1000,
 )

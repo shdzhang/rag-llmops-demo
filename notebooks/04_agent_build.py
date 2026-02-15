@@ -25,9 +25,9 @@ SCHEMA = dbutils.widgets.get("schema_name")
 MODEL_NAME = dbutils.widgets.get("model_name")
 EXPERIMENT_NAME = dbutils.widgets.get("experiment_name")
 
-UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
+LLM_ENDPOINT = dbutils.widgets.get("llm_endpoint")
 
-LLM_ENDPOINT = "databricks-claude-sonnet-4-5"
+UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
 VS_INDEX = f"{CATALOG}.{SCHEMA}.docs_index"
 
 print(f"MLflow version: {mlflow.__version__}")

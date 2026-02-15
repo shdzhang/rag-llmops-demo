@@ -22,18 +22,20 @@ SCHEMA = dbutils.widgets.get("schema_name")
 MODEL_NAME = dbutils.widgets.get("model_name")
 EXPERIMENT_NAME = dbutils.widgets.get("experiment_name")
 
+AGENT_LLM = dbutils.widgets.get("llm_endpoint")
+JUDGE_LLM_ENDPOINT = dbutils.widgets.get("judge_llm_endpoint")
+VS_ENDPOINT = dbutils.widgets.get("vector_search_endpoint")
+
 UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
 
 # Use the same experiment as notebook 04 so all runs are grouped together
 mlflow.set_registry_uri("databricks-uc")
 mlflow.set_experiment(EXPERIMENT_NAME)
 
-# Model endpoints
-AGENT_LLM = "databricks-claude-sonnet-4-5"
-# Use Claude Opus 4.1 as the LLM judge — strong reasoning for correctness scoring.
+# LLM judge URI — "databricks:/" prefix required by MLflow GenAI scorers.
 # Combined with reduced scorers (1 instead of 3) and 8 test cases, this keeps
 # evaluation under 15-20 minutes.
-JUDGE_LLM = "databricks:/databricks-claude-opus-4-1"
+JUDGE_LLM = f"databricks:/{JUDGE_LLM_ENDPOINT}"
 
 # Quality gates (metric names match scorer output keys)
 # Additional quality checks (tone, citation, safety) run in production via NB09 External Monitor.
@@ -158,7 +160,6 @@ _openai_client = DatabricksOpenAI()
 _vsc = VectorSearchClient(disable_notice=True)
 
 VS_INDEX = f"{CATALOG}.{SCHEMA}.docs_index"
-VS_ENDPOINT = "corp_vs_endpoint"
 
 _vs_index = _vsc.get_index(endpoint_name=VS_ENDPOINT, index_name=VS_INDEX)
 
