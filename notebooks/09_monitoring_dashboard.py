@@ -39,9 +39,9 @@ EXPERIMENT_NAME = dbutils.widgets.get("experiment_name")
 UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
 ENDPOINT_NAME = f"agents_{UC_MODEL_NAME}".replace(".", "-")[:63]
 
-# Inference table created by AI Gateway
-_endpoint_table_name = ENDPOINT_NAME.replace("-", "_")
-INFERENCE_TABLE = f"{CATALOG}.{SCHEMA}.`{_endpoint_table_name}_payload`"
+# Inference table created by AI Gateway (named after the model, not the endpoint)
+_model_table_name = MODEL_NAME.replace("-", "_")
+INFERENCE_TABLE = f"{CATALOG}.{SCHEMA}.`{_model_table_name}_payload`"
 
 w = WorkspaceClient()
 
