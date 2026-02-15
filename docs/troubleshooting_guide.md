@@ -126,6 +126,8 @@ EXPERIMENT_NAME = dbutils.widgets.get("experiment_name")
 mlflow.set_experiment(EXPERIMENT_NAME)
 ```
 
+> **Note:** Job YAMLs must reference `${resources.experiments.experiment.name}` (not `${var.experiment_name}`) so the DAB prefix is included. See also [6.3 Monitoring Job Creates a Stray Experiment](#63-monitoring-job-creates-a-stray-mlflow-experiment).
+
 ---
 
 ### 3.2 Quality Gate Fails: Correctness 0.000
@@ -323,6 +325,24 @@ Unable to access the notebook ".../05_agent_evaluation" in the workspace.
 **Cause:** Known DABs sync issue -- files silently skipped during upload.
 
 **Fix:** Redeploy. If persistent, manually upload the notebook.
+
+---
+
+### 6.3 Monitoring Job Creates a Stray MLflow Experiment
+
+**Symptom:** Two experiments in the MLflow UI: `[dev shidong_zhang] dev_corp_chatbot` (correct) and `dev_corp_chatbot` (stray, created by the monitoring job).
+
+**Cause:** `monitoring.job.yml` used `${var.experiment_name}` for its `experiment_name` parameter. In `mode: development`, DAB prefixes **resource** names (e.g., `${resources.experiments.experiment.name}` → `[dev shidong_zhang] dev_corp_chatbot`) but does **not** prefix raw **variable** values (e.g., `${var.experiment_name}` → `dev_corp_chatbot`). When NB09 called `mlflow.set_experiment("dev_corp_chatbot")`, MLflow created a new experiment without the prefix.
+
+**Fix:** Changed the default in `monitoring.job.yml` from `${var.experiment_name}` to `${resources.experiments.experiment.name}`, matching the other job YAMLs:
+```yaml
+# monitoring.job.yml
+parameters:
+  - name: "experiment_name"
+    default: "${resources.experiments.experiment.name}"  # NOT ${var.experiment_name}
+```
+
+**Cleanup:** Delete the stray `dev_corp_chatbot` experiment from the MLflow UI.
 
 ---
 
