@@ -225,23 +225,19 @@ df = spark.createDataFrame(pd.DataFrame(all_chunks))
 table_path = f"{CATALOG}.{SCHEMA}.{TABLE_NAME}"
 
 # Enable Change Data Feed BEFORE writing data so Vector Search Delta Sync
-# can capture the initial load (CDF must be on before writes happen).
+# can capture the initial load. Table properties persist across overwrites.
 spark.sql(f"""
     CREATE TABLE IF NOT EXISTS {table_path} (
         chunk_id STRING, content STRING, source_file STRING,
         department STRING, chunk_index INT, total_chunks INT
     ) TBLPROPERTIES (delta.enableChangeDataFeed = true)
 """)
-spark.sql(f"ALTER TABLE {table_path} SET TBLPROPERTIES (delta.enableChangeDataFeed = true)")
 
 df.write \
     .format("delta") \
     .mode("overwrite") \
     .option("overwriteSchema", "true") \
     .saveAsTable(table_path)
-
-# Re-enable CDF after overwrite (overwrite may reset table properties)
-spark.sql(f"ALTER TABLE {table_path} SET TBLPROPERTIES (delta.enableChangeDataFeed = true)")
 
 count = spark.table(table_path).count()
 print(f"Saved {count} chunks to {table_path}")

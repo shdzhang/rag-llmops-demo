@@ -81,12 +81,7 @@ for alias_name, version in aliases.items():
 **Root Cause:** Change Data Feed (CDF) was enabled **after** the initial data write. The Delta Sync pipeline had no changes to pick up.
 
 **Fix:**
-- **Notebook 01:** Enable CDF *before* writing data, and re-enable after `overwrite` (which can reset table properties):
-```python
-spark.sql(f"CREATE TABLE IF NOT EXISTS {t} (...) TBLPROPERTIES (delta.enableChangeDataFeed = true)")
-df.write.format("delta").mode("overwrite").saveAsTable(t)
-spark.sql(f"ALTER TABLE {t} SET TBLPROPERTIES (delta.enableChangeDataFeed = true)")
-```
+- **Notebook 01:** Enable CDF *before* writing data via `CREATE TABLE IF NOT EXISTS ... TBLPROPERTIES (delta.enableChangeDataFeed = true)`. Table properties persist across data overwrites, so a single `CREATE TABLE` is sufficient.
 - **Notebook 02:** Wait loop now checks for *actual data* (via `similarity_search`), not just `ONLINE` status. Auto-triggers a sync if index is empty.
 
 ---
