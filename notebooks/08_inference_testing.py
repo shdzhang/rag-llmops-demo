@@ -15,12 +15,16 @@
 # COMMAND ----------
 import time
 import statistics
+import mlflow
 from databricks.sdk import WorkspaceClient
 
 # --- Configuration (from DAB job parameters) ---
 CATALOG = dbutils.widgets.get("catalog_name")
 SCHEMA = dbutils.widgets.get("schema_name")
 MODEL_NAME = dbutils.widgets.get("model_name")
+EXPERIMENT_NAME = dbutils.widgets.get("experiment_name")
+
+mlflow.set_experiment(EXPERIMENT_NAME)
 
 # Get the endpoint name set by notebook 07 via task values
 try:

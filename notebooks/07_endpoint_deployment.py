@@ -34,13 +34,16 @@ from databricks import agents
 CATALOG = dbutils.widgets.get("catalog_name")
 SCHEMA = dbutils.widgets.get("schema_name")
 MODEL_NAME = dbutils.widgets.get("model_name")
+EXPERIMENT_NAME = dbutils.widgets.get("experiment_name")
 
 UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
 
 mlflow.set_registry_uri("databricks-uc")
+mlflow.set_experiment(EXPERIMENT_NAME)
 client = MlflowClient()
 
 print(f"Deploying: {UC_MODEL_NAME}")
+print(f"Experiment: {EXPERIMENT_NAME}")
 print(f"MLflow version: {mlflow.__version__}")
 
 # COMMAND ----------
