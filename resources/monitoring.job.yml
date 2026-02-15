@@ -12,7 +12,7 @@ resources:
         - name: "model_name"
           default: "${resources.registered_models.corporate_chatbot.name}"
         - name: "experiment_name"
-          default: "${var.experiment_name}"
+          default: "${resources.experiments.experiment.name}"
       tasks:
         - task_key: monitoring_dashboard
           notebook_task:
