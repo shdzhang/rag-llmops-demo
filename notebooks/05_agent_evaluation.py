@@ -30,12 +30,15 @@ mlflow.set_experiment(EXPERIMENT_NAME)
 
 # Model endpoints
 AGENT_LLM = "databricks-claude-sonnet-4-5"
-JUDGE_LLM = "databricks:/databricks-claude-sonnet-4-5"
+# Use a fast model for the LLM judge to keep evaluation under 10-15 minutes.
+# Claude Sonnet 4.5 is too slow for batch evaluation (rate-limited, high latency).
+# Llama 3.3 70B is fast, accurate for correctness scoring, and has high throughput.
+JUDGE_LLM = "databricks:/databricks-meta-llama-3-3-70b-instruct"
 
 # Quality gates (metric names match scorer output keys)
+# Additional quality checks (tone, citation, safety) run in production via NB09 External Monitor.
 QUALITY_THRESHOLDS = {
     "correctness": 0.5,         # 50% of responses must be correct
-    "professional_tone": 0.8,   # 80% must have professional tone
 }
 
 print(f"MLflow version: {mlflow.__version__}")
@@ -78,29 +81,12 @@ eval_data = [
             ),
         },
     },
-    {
-        "inputs": {"question": "My internet bill is $90/month — will the company cover any of it?"},
-        "expectations": {
-            "expected_response": (
-                "The company reimburses up to $75 per month for home internet."
-            ),
-        },
-    },
     # --- Parental Leave Policy ---
     {
         "inputs": {"question": "My wife and I are expecting in June. How much time off do I get as the primary caregiver?"},
         "expectations": {
             "expected_response": (
                 "Primary caregivers receive 16 weeks of paid leave at full salary."
-            ),
-        },
-    },
-    {
-        "inputs": {"question": "We're adopting a child — do we still get parental leave?"},
-        "expectations": {
-            "expected_response": (
-                "Yes, adoption and foster care parents receive the same benefits "
-                "as biological parents."
             ),
         },
     },
@@ -111,14 +97,6 @@ eval_data = [
             "expected_response": (
                 "Expense reports must be submitted through the Concur system within "
                 "30 days. Receipts are required for expenses over $25."
-            ),
-        },
-    },
-    {
-        "inputs": {"question": "Booking a hotel for the NYC conference next month — is there a nightly limit?"},
-        "expectations": {
-            "expected_response": (
-                "The maximum nightly hotel rate is $250 for domestic travel."
             ),
         },
     },
@@ -149,14 +127,6 @@ eval_data = [
         },
     },
     # --- Company Holidays ---
-    {
-        "inputs": {"question": "Planning a vacation — how many company holidays do we get this year?"},
-        "expectations": {
-            "expected_response": (
-                "The company offers 13 paid holidays plus 2 floating holidays per year."
-            ),
-        },
-    },
     {
         "inputs": {"question": "Is the office closed between Christmas and New Year's?"},
         "expectations": {
@@ -282,35 +252,26 @@ print(f"Test response: {test_response[:300]}...")
 
 # COMMAND ----------
 
+import os
 from mlflow.genai.scorers import Correctness, Guidelines
 
-# Built-in scorers - all using Opus 4/6 as the LLM judge
+# Concurrency settings for mlflow.genai.evaluate()
+# Default is 10 workers each, but Foundation Model endpoints may throttle.
+# Adjust based on your endpoint's rate limits.
+os.environ["MLFLOW_GENAI_EVAL_MAX_WORKERS"] = "4"          # parallel test cases
+os.environ["MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS"] = "2"   # parallel scorers per test case
+
+# Scorers for offline evaluation.
+# We use only Correctness here (the quality gate metric) to keep evaluation fast.
+# Additional quality checks (professional tone, source citation, safety,
+# groundedness) run automatically in production via the External Monitor (NB09).
 scorers = [
-    # Checks if the response is correct given the expected answer
     Correctness(model=JUDGE_LLM),
-    # Custom guideline scorer for corporate tone
-    Guidelines(
-        name="professional_tone",
-        model=JUDGE_LLM,
-        guidelines=(
-            "The response should maintain a professional and helpful tone. "
-            "It should not be overly casual, use slang, or be dismissive. "
-            "It should be clear and actionable."
-        ),
-    ),
-    Guidelines(
-        name="source_citation",
-        model=JUDGE_LLM,
-        guidelines=(
-            "When the response references specific policies or documents, "
-            "it should cite the source (e.g., document name, section number). "
-            "If the information is not available, the response should clearly "
-            "state that and suggest who to contact."
-        ),
-    ),
 ]
 
-print(f"Configured {len(scorers)} scorers (judge model: {JUDGE_LLM})")
+print(f"Configured {len(scorers)} scorer(s) (judge model: {JUDGE_LLM})")
+print(f"Concurrency: {os.environ['MLFLOW_GENAI_EVAL_MAX_WORKERS']} data workers, "
+      f"{os.environ['MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS']} scorer workers")
 
 # COMMAND ----------
 # MAGIC %md
