@@ -159,8 +159,8 @@ def get_or_create_monitor(sample_rate: float = 1.0):
         print(f"Monitor updated: {updated}")
         return updated
     except Exception as e:
-        if "does not exist" in str(e):
-            print(f"Creating new external monitor...")
+        if "No monitor found" in str(e) or "does not exist" in str(e) or "NoMonitorFoundError" in type(e).__name__:
+            print(f"No existing monitor — creating new external monitor...")
             monitor = create_external_monitor(
                 catalog_name=CATALOG,
                 schema_name=SCHEMA,
