@@ -303,6 +303,27 @@ Add `databricks-openai` to `%pip install` commands.
 
 ---
 
+### 5.6 `mlflow.openai.autolog()` Fails During `log_model()` Validation
+
+**Error:**
+```
+MlflowException: Failed to run user code from .../rag_agent.py.
+Error: 'NoneType' object has no attribute '_multi_processor'
+```
+
+**Cause:** `mlflow.pyfunc.log_model()` loads the agent module in a validation subprocess where the OpenTelemetry `GLOBAL_TRACE_PROVIDER` is not initialized. `mlflow.openai.autolog()` tries to access `GLOBAL_TRACE_PROVIDER._multi_processor` and crashes. This started appearing after MLflow/openai SDK version updates — earlier versions tolerated missing providers.
+
+**Fix:** Wrap `autolog()` in a try/except in the agent module:
+```python
+try:
+    mlflow.openai.autolog()
+except Exception:
+    pass
+```
+The agent works correctly without autolog. Explicit `@mlflow.trace` decorators on agent methods still produce traces. Also use lazy initialization for the `DatabricksOpenAI` client (property getter instead of `__init__`).
+
+---
+
 ## 6. Databricks Asset Bundles
 
 ### 6.1 Double Prefix in Job Names

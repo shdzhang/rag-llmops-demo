@@ -30,8 +30,14 @@ VECTOR_SEARCH_INDEX = config.get("vector_search_index")
 PROMPT_NAME = config.get("prompt_name")
 PROMPT_ALIAS = config.get("prompt_alias")
 
-# Enable automatic tracing for OpenAI-compatible calls
-mlflow.openai.autolog()
+# Enable automatic tracing for OpenAI-compatible calls.
+# Wrapped in try/except: autolog() accesses GLOBAL_TRACE_PROVIDER which is
+# None inside mlflow.pyfunc.log_model()'s validation subprocess. The agent
+# works correctly without it — @mlflow.trace on _retrieve_context still fires.
+try:
+    mlflow.openai.autolog()
+except Exception:
+    pass
 
 
 class CorporateAffairsAgent(ResponsesAgent):
@@ -49,11 +55,15 @@ class CorporateAffairsAgent(ResponsesAgent):
 
     def __init__(self):
         super().__init__()
+        self._openai_client = None
 
-        from databricks_openai import DatabricksOpenAI
-
-        # LLM client is shared across requests (stateless, uses SP creds)
-        self.openai_client = DatabricksOpenAI()
+    @property
+    def openai_client(self):
+        """Lazy init — avoids httpx client issues during log_model() validation."""
+        if self._openai_client is None:
+            from databricks_openai import DatabricksOpenAI
+            self._openai_client = DatabricksOpenAI()
+        return self._openai_client
 
     # ------------------------------------------------------------------
     # Retrieval

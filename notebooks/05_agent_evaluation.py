@@ -4,12 +4,13 @@
 # MAGIC
 # MAGIC This notebook evaluates the RAG agent using **MLflow GenAI Evaluate**:
 # MAGIC 1. Creates an evaluation dataset
-# MAGIC 2. Runs the agent against test cases
-# MAGIC 3. Applies built-in and custom LLM-as-judge scorers
+# MAGIC 2. Loads the **actual agent** (`rag_agent.py`) from the candidate model logged in NB04
+# MAGIC 3. Applies built-in LLM-as-judge scorers against the real agent
 # MAGIC 4. Enforces quality gates for promotion
 
 # COMMAND ----------
 # MAGIC %pip install mlflow>=3.1 databricks-sdk databricks-agents databricks-vectorsearch databricks-openai pandas
+# MAGIC # databricks-openai is still required by rag_agent.py when loaded via mlflow.pyfunc.load_model
 # MAGIC %restart_python
 
 # COMMAND ----------
@@ -22,10 +23,8 @@ SCHEMA = dbutils.widgets.get("schema_name")
 MODEL_NAME = dbutils.widgets.get("model_name")
 EXPERIMENT_NAME = dbutils.widgets.get("experiment_name")
 
-AGENT_LLM = dbutils.widgets.get("llm_endpoint")
 JUDGE_LLM_ENDPOINT = dbutils.widgets.get("judge_llm_endpoint")
 VS_ENDPOINT = dbutils.widgets.get("vector_search_endpoint")
-PROMPT_NAME = f"{CATALOG}.{SCHEMA}.{dbutils.widgets.get('prompt_base_name')}"
 
 UC_MODEL_NAME = f"{CATALOG}.{SCHEMA}.{MODEL_NAME}"
 
@@ -46,7 +45,6 @@ QUALITY_THRESHOLDS = {
 
 print(f"MLflow version: {mlflow.__version__}")
 print(f"Evaluating: {UC_MODEL_NAME}@candidate")
-print(f"Agent LLM: {AGENT_LLM}")
 print(f"Judge LLM: {JUDGE_LLM}")
 
 # COMMAND ----------
@@ -146,30 +144,27 @@ eval_df.head()
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## Step 2: Define the Predict Function
+# MAGIC ## Step 2: Load the Actual Agent and Define Predict Function
 # MAGIC
-# MAGIC Wraps the logged model so `mlflow.genai.evaluate()` can call it.
+# MAGIC We load the **real agent** (`rag_agent.py`) from the candidate model logged in
+# MAGIC NB04 — the exact same code that will be deployed to production. This ensures
+# MAGIC evaluation tests the real code path, not a reimplementation.
 
 # COMMAND ----------
 
 import time
-from databricks_openai import DatabricksOpenAI
 from databricks.vector_search.client import VectorSearchClient
 
-# Initialize clients once (shared across all predict_fn calls)
-_openai_client = DatabricksOpenAI()
-_vsc = VectorSearchClient(disable_notice=True)
-
-VS_INDEX = f"{CATALOG}.{SCHEMA}.docs_index"
-
-_vs_index = _vsc.get_index(endpoint_name=VS_ENDPOINT, index_name=VS_INDEX)
-
-# --- Verify that the VS index is ONLINE and has data before proceeding ---
+# --- Pre-flight: verify Vector Search index has data ---
 # TRIGGERED indexes don't auto-sync. If the index is empty we trigger a sync
 # ourselves and wait for it to complete (up to 15 min total).
+VS_INDEX = f"{CATALOG}.{SCHEMA}.docs_index"
+_vsc = VectorSearchClient(disable_notice=True)
+_vs_index = _vsc.get_index(endpoint_name=VS_ENDPOINT, index_name=VS_INDEX)
+
 print(f"Checking Vector Search index readiness: {VS_INDEX}")
 _sync_triggered = False
-for _attempt in range(30):  # wait up to ~15 min
+for _attempt in range(30):
     try:
         _test = _vs_index.similarity_search(
             query_text="test", columns=["content"], num_results=1
@@ -179,7 +174,6 @@ for _attempt in range(30):  # wait up to ~15 min
             print(f"  Index is ONLINE with data (attempt {_attempt + 1})")
             break
         else:
-            # Index responds but has no data -- trigger a sync once
             if not _sync_triggered:
                 print(f"  Index has 0 rows - triggering sync...")
                 try:
@@ -200,49 +194,31 @@ else:
         "Check the source table and Delta Sync pipeline status."
     )
 
+# COMMAND ----------
+
+# Load the actual agent model logged by NB04 (candidate version)
+_loaded_model = mlflow.pyfunc.load_model(f"models:/{UC_MODEL_NAME}@candidate")
+print(f"Loaded model: {UC_MODEL_NAME}@candidate")
+
 
 def predict_fn(question: str) -> str:
     """
-    Predict function for evaluation - runs the full RAG pipeline.
+    Wraps the real agent for mlflow.genai.evaluate().
 
-    The parameter name ('question') must match the key in eval_data['inputs'].
-    mlflow.genai.evaluate() calls this as predict_fn(question="...").
-
-    Steps:
-    1. Retrieve relevant docs from Vector Search
-    2. Load prompt from Prompt Registry
-    3. Format prompt with retrieved context + question
-    4. Call the LLM
+    Calls the actual rag_agent.py code via the logged model — same retrieval,
+    same prompt loading, same LLM call that runs in production. The parameter
+    name ('question') must match the key in eval_data['inputs'].
     """
-    # Step 1: Retrieve context from Vector Search (fail loudly on error)
-    results = _vs_index.similarity_search(
-        query_text=question,
-        columns=["content", "source_file"],
-        num_results=5,
-    )
-    docs = results.get("result", {}).get("data_array", [])
-    if not docs:
-        raise RuntimeError(f"Vector Search returned 0 results for: {question}")
-    context = "\n\n".join(
-        f"[Source: {row[1]}]\n{row[0]}" for row in docs
-    )
+    request = {"input": [{"role": "user", "content": question}]}
+    response = _loaded_model.predict(request)
 
-    # Step 2-3: Load and format prompt from Prompt Registry
-    prompt = mlflow.genai.load_prompt(f"prompts:/{PROMPT_NAME}@production")
-    formatted = prompt.format(context=context, question=question)
-
-    # Step 4: Call the LLM
-    response = _openai_client.chat.completions.create(
-        model=AGENT_LLM,
-        messages=[{"role": "user", "content": formatted}],
-        temperature=0.1,
-        max_tokens=500,
-    )
-
-    return response.choices[0].message.content
+    output = response.get("output", [])
+    if output and isinstance(output[0], dict):
+        return output[0].get("text", str(output[0]))
+    return str(output)
 
 
-# Quick test - verify retrieval works before running full evaluation
+# Quick test - verify the loaded agent works before running full evaluation
 test_response = predict_fn("What is the remote work policy?")
 print(f"Test response: {test_response[:300]}...")
 
@@ -255,7 +231,7 @@ print(f"Test response: {test_response[:300]}...")
 # COMMAND ----------
 
 import os
-from mlflow.genai.scorers import Correctness, Guidelines
+from mlflow.genai.scorers import Correctness
 
 # Concurrency settings for mlflow.genai.evaluate()
 # Default is 10 workers each, but Foundation Model endpoints may throttle.
