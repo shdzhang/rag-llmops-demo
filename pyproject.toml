@@ -6,21 +6,11 @@ requires-python = ">=3.10"
 dependencies = [
     "mlflow>=3.1",
     "databricks-sdk",
-    "databricks-langchain",
     "databricks-agents",
     "databricks-vectorsearch",
-    "langchain>=0.3.0",
-    "langgraph>=0.3.0",
-    "pydantic>=2.0",
-    "openai>=1.0",
+    "databricks-openai",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.uv]
-dev-dependencies = [
-    "pytest>=8.0",
-    "pytest-asyncio>=0.23",
-]

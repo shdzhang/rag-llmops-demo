@@ -39,7 +39,6 @@ rag-llmops-demo/
 │   ├── monitoring.job.yml          # Scheduled monitoring job
 │   └── end_to_end.job.yml          # Orchestrator job (runs all stages)
 ├── docs/                           # Documentation
-│   ├── architecture.md             # Architecture overview
 │   ├── obo_setup_guide.md          # OBO setup instructions
 │   └── troubleshooting_guide.md    # All issues encountered and fixes
 ├── databricks.yml                  # DAB bundle configuration
@@ -98,7 +97,16 @@ Data Prep -> Prompt Registry -> Agent Build -> Evaluate -> Deploy -> Test -> Mon
 ## Technologies
 
 - **MLflow 3.x**: ResponsesAgent, Prompt Registry, GenAI Evaluate, Tracing
-- **Databricks Foundation Models**: Claude Sonnet 4.5 via AI Gateway
+- **Databricks Foundation Models**: Claude Sonnet 4.5 (RAG), Claude Opus 4.1 (evaluation judge) via AI Gateway
 - **Databricks Vector Search**: Managed embedding + retrieval
 - **Unity Catalog**: Model registry, governance, permissions
 - **Databricks Asset Bundles**: Infrastructure as Code
+
+## Key Design Decisions
+
+1. **ResponsesAgent over ChatAgent**: MLflow 3.x's Responses API interface (uses `input`/`output`, not `messages`/`choices`)
+2. **File-based logging**: Agent code is logged as a file, not pickled - more portable and debuggable
+3. **Prompt Registry over local files**: Version control, aliases, and hot-reload without redeployment
+4. **agents.deploy() over manual endpoint creation**: Automatic AI Gateway, inference tables, and review app
+5. **UC aliases over stages**: `@candidate` / `@champion` instead of deprecated stage transitions
+6. **Built-in scorers over custom evaluation**: MLflow-native evaluation with full tracking integration

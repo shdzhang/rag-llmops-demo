@@ -140,9 +140,8 @@ mlflow.set_experiment(EXPERIMENT_NAME)
 3. `expected_response` values were overly detailed, penalizing partial matches
 
 **Fixes:**
-1. Fixed CDF ordering (see 2.1) + added pre-evaluation readiness check with auto-sync
-2. `predict_fn` now raises `RuntimeError` on 0 retrieval results
-3. Simplified `expected_response` to essential facts only
+1. Fixed CDF ordering (see 2.1) + added pre-evaluation readiness check with auto-sync (NB05 verifies the VS index has data and triggers a sync if empty before running evaluation)
+2. Simplified `expected_response` to essential facts only
 
 ---
 

@@ -68,7 +68,10 @@ except Exception:
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## Step 2: Enable Change Data Feed on Source Table
+# MAGIC ## Step 2: Ensure Change Data Feed on Source Table (Safety Net)
+# MAGIC
+# MAGIC NB01 creates the table with CDF already enabled. This step is a safety net
+# MAGIC in case the table was recreated without it.
 
 # COMMAND ----------
 

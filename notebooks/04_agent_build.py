@@ -9,7 +9,7 @@
 # MAGIC 4. Registers to Unity Catalog
 
 # COMMAND ----------
-# MAGIC %pip install mlflow>=3.1 databricks-sdk databricks-langchain databricks-vectorsearch databricks-agents databricks-openai
+# MAGIC %pip install mlflow>=3.1 databricks-sdk databricks-vectorsearch databricks-agents databricks-openai
 # MAGIC %restart_python
 
 # COMMAND ----------
@@ -49,7 +49,7 @@ except Exception:
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## Step 2: Test the Agent Locally
+# MAGIC ## Step 2: Resolve Agent File Path
 
 # COMMAND ----------
 
@@ -103,7 +103,6 @@ resources = [
 # pip requirements for the serving environment
 pip_requirements = [
     "mlflow>=3.1",
-    "databricks-langchain",
     "databricks-vectorsearch",
     "databricks-sdk",
     "databricks-openai",
