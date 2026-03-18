@@ -42,8 +42,6 @@ rag-llmops-demo/
 │   ├── architecture.md             # Architecture overview
 │   ├── obo_setup_guide.md          # OBO setup instructions
 │   └── troubleshooting_guide.md    # All issues encountered and fixes
-├── tests/                          # Local tests
-│   └── test_agent_local.py         # Agent validation (run on cluster)
 ├── databricks.yml                  # DAB bundle configuration
 ├── pyproject.toml                  # Python dependencies (uv, MLflow 3.x)
 └── README.md                       # This file
