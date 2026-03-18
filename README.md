@@ -42,7 +42,6 @@ rag-llmops-demo/
 │   ├── obo_setup_guide.md          # OBO setup instructions
 │   └── troubleshooting_guide.md    # All issues encountered and fixes
 ├── databricks.yml                  # DAB bundle configuration
-├── pyproject.toml                  # Python dependencies (uv, MLflow 3.x)
 └── README.md                       # This file
 ```
 
